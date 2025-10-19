@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import ConnectButton from "@/components/ConnectButton";
 import NetworkStatus from "@/components/NetworkStatus";
+import SmartAccountStatus from "@/components/SmartAccountStatus";
 import { createDelegation, revokeDelegation } from "@/lib/delegation";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   const [legs, setLegs] = useState(4);
   const [intervalMins, setIntervalMins] = useState(60);
   const [router, setRouter] = useState("");
+  const [delegate, setDelegate] = useState("");
   const [spendCap, setSpendCap] = useState("100");
   const [expiry, setExpiry] = useState(() => {
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -34,6 +36,35 @@ export default function Home() {
     return Array.from({ length: n }).map((_, i) => ({ index: i + 1, amount: amt, at: new Date(now.getTime() + i * iv * 60_000) }));
   }, [budget, legs, intervalMins]);
 
+  const [aiPlan, setAiPlan] = useState<{ index: number; amount: number; atISO: string }[] | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiErr, setAiErr] = useState<string | null>(null);
+
+  async function generateAIPlan() {
+    try {
+      setAiErr(null);
+      setAiBusy(true);
+      const res = await fetch("/api/agent/plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tokenIn,
+          tokenOut,
+          budget: parseFloat(budget) || 0,
+          legs,
+          intervalMins,
+        }),
+      });
+      if (!res.ok) throw new Error(`plan_failed:${res.status}`);
+      const data = await res.json();
+      setAiPlan(data.plan ?? null);
+    } catch (e: any) {
+      setAiErr(e?.message ?? "plan_error");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen p-6 sm:p-10">
       <div className="max-w-5xl mx-auto flex flex-col gap-6">
@@ -41,6 +72,7 @@ export default function Home() {
           <div className="text-2xl sm:text-3xl font-semibold">DCA Sitter</div>
           <div className="flex items-center gap-3">
             <NetworkStatus />
+            <SmartAccountStatus />
             <ConnectButton />
           </div>
         </header>
@@ -69,14 +101,28 @@ export default function Home() {
                 <label className="text-sm">Interval (minutes)</label>
                 <input type="number" min={1} className="rounded-lg px-3 py-2 bg-white border border-black/10" value={intervalMins} onChange={(e) => setIntervalMins(Number(e.target.value))} />
               </div>
+              <div className="flex items-end">
+                <button
+                  className="rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
+                  onClick={generateAIPlan}
+                  disabled={aiBusy}
+                >
+                  {aiBusy ? "Generating…" : "Generate with AI"}
+                </button>
+              </div>
             </div>
+            {aiErr && <div className="mt-3 text-sm text-red-600">{aiErr}</div>}
           </section>
 
           <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
             <div className="text-lg font-medium mb-4">Delegation</div>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-sm">DCA Router Address</label>
+                <label className="text-sm">Delegate Address (agent)</label>
+                <input className="rounded-lg px-3 py-2 bg-white border border-black/10" placeholder="0x..." value={delegate} onChange={(e) => setDelegate(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">DCA Router Address (scope)</label>
                 <input className="rounded-lg px-3 py-2 bg-white border border-black/10" placeholder="0x..." value={router} onChange={(e) => setRouter(e.target.value)} />
               </div>
               <div className="flex flex-col gap-2">
@@ -132,17 +178,26 @@ export default function Home() {
             <div className="text-sm">{delegationCreated ? "Active" : "Inactive"}</div>
           </div>
           <div className="space-y-2">
-            {plan.length === 0 ? (
+            {(aiPlan ? aiPlan.length === 0 : plan.length === 0) ? (
               <div className="text-sm">No plan generated</div>
             ) : (
-              plan.map((p) => (
-                <div key={p.index} className="flex items-center justify-between rounded-lg bg-white p-3 border border-black/10">
-                  <div className="text-sm">Leg {p.index}</div>
-                  <div className="text-sm">{p.amount.toFixed(4)} {tokenIn}</div>
-                  <div className="text-sm">{p.at.toLocaleString()}</div>
-                  <div className="text-xs px-2 py-1 rounded-full bg-black/5">Pending</div>
-                </div>
-              ))
+              (aiPlan
+                ? aiPlan.map((p) => (
+                    <div key={p.index} className="flex items-center justify-between rounded-lg bg-white p-3 border border-black/10">
+                      <div className="text-sm">Leg {p.index}</div>
+                      <div className="text-sm">{Number(p.amount).toFixed(4)} {tokenIn}</div>
+                      <div className="text-sm">{new Date(p.atISO).toLocaleString()}</div>
+                      <div className="text-xs px-2 py-1 rounded-full bg-black/5">Pending</div>
+                    </div>
+                  ))
+                : plan.map((p) => (
+                    <div key={p.index} className="flex items-center justify-between rounded-lg bg-white p-3 border border-black/10">
+                      <div className="text-sm">Leg {p.index}</div>
+                      <div className="text-sm">{p.amount.toFixed(4)} {tokenIn}</div>
+                      <div className="text-sm">{p.at.toLocaleString()}</div>
+                      <div className="text-xs px-2 py-1 rounded-full bg-black/5">Pending</div>
+                    </div>
+                  )))
             )}
           </div>
         </section>
