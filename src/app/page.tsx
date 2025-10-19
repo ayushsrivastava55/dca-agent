@@ -1,103 +1,135 @@
-import Image from "next/image";
+"use client";
+
+import { useMemo, useState } from "react";
+import { useAccount } from "wagmi";
+import ConnectButton from "@/components/ConnectButton";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { isConnected } = useAccount();
+  const [tokenIn, setTokenIn] = useState("MON");
+  const [tokenOut, setTokenOut] = useState("USDC");
+  const [budget, setBudget] = useState("100");
+  const [legs, setLegs] = useState(4);
+  const [intervalMins, setIntervalMins] = useState(60);
+  const [router, setRouter] = useState("");
+  const [spendCap, setSpendCap] = useState("100");
+  const [expiry, setExpiry] = useState(() => {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
+  const [delegationCreated, setDelegationCreated] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const plan = useMemo(() => {
+    const b = parseFloat(budget) || 0;
+    const n = Number(legs) || 0;
+    const iv = Number(intervalMins) || 0;
+    if (!b || !n || !iv) return [] as { index: number; amount: number; at: Date }[];
+    const amt = b / n;
+    const now = new Date();
+    return Array.from({ length: n }).map((_, i) => ({ index: i + 1, amount: amt, at: new Date(now.getTime() + i * iv * 60_000) }));
+  }, [budget, legs, intervalMins]);
+
+  return (
+    <div className="min-h-screen p-6 sm:p-10">
+      <div className="max-w-5xl mx-auto flex flex-col gap-6">
+        <header className="flex items-center justify-between">
+          <div className="text-2xl sm:text-3xl font-semibold">DCA Sitter</div>
+          <ConnectButton />
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="lg:col-span-2 rounded-2xl bg-[var(--surface)] text-black p-6">
+            <div className="text-lg font-medium mb-4">DCA Configuration</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Token In</label>
+                <input className="rounded-lg px-3 py-2 bg-white border border-black/10" value={tokenIn} onChange={(e) => setTokenIn(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Token Out</label>
+                <input className="rounded-lg px-3 py-2 bg-white border border-black/10" value={tokenOut} onChange={(e) => setTokenOut(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Total Budget</label>
+                <input type="number" min={0} className="rounded-lg px-3 py-2 bg-white border border-black/10" value={budget} onChange={(e) => setBudget(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Number of Legs</label>
+                <input type="number" min={1} className="rounded-lg px-3 py-2 bg-white border border-black/10" value={legs} onChange={(e) => setLegs(Number(e.target.value))} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Interval (minutes)</label>
+                <input type="number" min={1} className="rounded-lg px-3 py-2 bg-white border border-black/10" value={intervalMins} onChange={(e) => setIntervalMins(Number(e.target.value))} />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
+            <div className="text-lg font-medium mb-4">Delegation</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">DCA Router Address</label>
+                <input className="rounded-lg px-3 py-2 bg-white border border-black/10" placeholder="0x..." value={router} onChange={(e) => setRouter(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Spend Cap</label>
+                <input type="number" min={0} className="rounded-lg px-3 py-2 bg-white border border-black/10" value={spendCap} onChange={(e) => setSpendCap(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm">Expiry</label>
+                <input type="datetime-local" className="rounded-lg px-3 py-2 bg-white border border-black/10" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  className="rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
+                  onClick={() => setDelegationCreated(true)}
+                  disabled={!isConnected || !router}
+                >
+                  Create Delegation
+                </button>
+                <button
+                  className="rounded-full bg-[var(--color-error)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
+                  onClick={() => setDelegationCreated(false)}
+                  disabled={!delegationCreated}
+                >
+                  Revoke
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-lg font-medium">Execution Timeline</div>
+            <div className="text-sm">{delegationCreated ? "Active" : "Inactive"}</div>
+          </div>
+          <div className="space-y-2">
+            {plan.length === 0 ? (
+              <div className="text-sm">No plan generated</div>
+            ) : (
+              plan.map((p) => (
+                <div key={p.index} className="flex items-center justify-between rounded-lg bg-white p-3 border border-black/10">
+                  <div className="text-sm">Leg {p.index}</div>
+                  <div className="text-sm">{p.amount.toFixed(4)} {tokenIn}</div>
+                  <div className="text-sm">{p.at.toLocaleString()}</div>
+                  <div className="text-xs px-2 py-1 rounded-full bg-black/5">Pending</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 p-6">
+          <div className="text-sm mb-2">Monad Testnet</div>
+          <div className="flex gap-3 text-sm">
+            <a className="underline" href="https://faucet.monad.xyz/" target="_blank" rel="noreferrer">Faucet</a>
+            <a className="underline" href="https://testnet.monadexplorer.com" target="_blank" rel="noreferrer">Explorer</a>
+            <a className="underline" href="https://docs.monad.xyz/" target="_blank" rel="noreferrer">Docs</a>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
