@@ -6,9 +6,13 @@ import ConnectButton from "@/components/ConnectButton";
 import NetworkStatus from "@/components/NetworkStatus";
 import SmartAccountStatus from "@/components/SmartAccountStatus";
 import { createDelegation, revokeDelegation } from "@/lib/delegation";
+import { useWalletClient } from "wagmi";
+import { useSmartAccount } from "@/hooks/useSmartAccount";
 
 export default function Home() {
   const { isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const { smartAddress } = useSmartAccount();
   const [tokenIn, setTokenIn] = useState("MON");
   const [tokenOut, setTokenOut] = useState("USDC");
   const [budget, setBudget] = useState("100");
@@ -139,14 +143,22 @@ export default function Home() {
                   onClick={async () => {
                     try {
                       setBusy(true);
-                      const rec = await createDelegation({ router, spendCap, expiry });
+                      if (!walletClient || !smartAddress || !delegate) throw new Error("wallet_not_ready");
+                      const rec = await createDelegation({
+                        router: router as any,
+                        spendCap,
+                        expiry,
+                        walletClient,
+                        from: smartAddress as `0x${string}`,
+                        to: delegate as `0x${string}`,
+                      });
                       setDelegationId(rec.id);
                       setDelegationCreated(true);
                     } finally {
                       setBusy(false);
                     }
                   }}
-                  disabled={!isConnected || !router || busy}
+                  disabled={!isConnected || !router || !delegate || !walletClient || !smartAddress || busy}
                 >
                   {busy ? "Creating…" : "Create Delegation"}
                 </button>
