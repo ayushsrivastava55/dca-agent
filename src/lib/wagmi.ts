@@ -5,10 +5,7 @@ import { monadTestnet } from "@/lib/chains";
 export const config = createConfig({
   chains: [monadTestnet],
   connectors: [
-    injected({
-      target: "metaMask",
-      shimDisconnect: true,
-    }),
+    injected({ shimDisconnect: true }),
   ],
   transports: {
     [monadTestnet.id]: http(monadTestnet.rpcUrls.default.http[0]),

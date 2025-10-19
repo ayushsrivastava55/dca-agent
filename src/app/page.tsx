@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import ConnectButton from "@/components/ConnectButton";
+import NetworkStatus from "@/components/NetworkStatus";
+import { createDelegation, revokeDelegation } from "@/lib/delegation";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -19,6 +21,8 @@ export default function Home() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
   const [delegationCreated, setDelegationCreated] = useState(false);
+  const [delegationId, setDelegationId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const plan = useMemo(() => {
     const b = parseFloat(budget) || 0;
@@ -35,7 +39,10 @@ export default function Home() {
       <div className="max-w-5xl mx-auto flex flex-col gap-6">
         <header className="flex items-center justify-between">
           <div className="text-2xl sm:text-3xl font-semibold">DCA Sitter</div>
-          <ConnectButton />
+          <div className="flex items-center gap-3">
+            <NetworkStatus />
+            <ConnectButton />
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -83,17 +90,36 @@ export default function Home() {
               <div className="flex gap-3">
                 <button
                   className="rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
-                  onClick={() => setDelegationCreated(true)}
-                  disabled={!isConnected || !router}
+                  onClick={async () => {
+                    try {
+                      setBusy(true);
+                      const rec = await createDelegation({ router, spendCap, expiry });
+                      setDelegationId(rec.id);
+                      setDelegationCreated(true);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={!isConnected || !router || busy}
                 >
-                  Create Delegation
+                  {busy ? "Creating…" : "Create Delegation"}
                 </button>
                 <button
                   className="rounded-full bg-[var(--color-error)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
-                  onClick={() => setDelegationCreated(false)}
-                  disabled={!delegationCreated}
+                  onClick={async () => {
+                    if (!delegationId) return;
+                    try {
+                      setBusy(true);
+                      await revokeDelegation(delegationId);
+                      setDelegationCreated(false);
+                      setDelegationId(null);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={!delegationCreated || busy}
                 >
-                  Revoke
+                  {busy ? "Revoking…" : "Revoke"}
                 </button>
               </div>
             </div>
