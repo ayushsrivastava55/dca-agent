@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DCA Sitter
 
-## Getting Started
+AI-powered Dollar-Cost Averaging (DCA) on Monad using MetaMask Delegation Toolkit and ADK-TS agents.
 
-First, run the development server:
+## Features
+
+- **AI Planning**: Uses ADK-TS agent with Gemini to generate optimized DCA schedules
+- **Delegated Execution**: MetaMask Smart Accounts + Delegation Toolkit for gasless, automated execution
+- **Monad Testnet**: Built for Monad's high-performance EVM
+- **Modern Stack**: Next.js 15, Viem, Wagmi, TailwindCSS
+
+## Prerequisites
+
+- Node.js 22+ (recommended for ADK compatibility)
+- MetaMask wallet with Monad Testnet configured
+- MON tokens from [Monad Faucet](https://faucet.monad.xyz/)
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment
+
+Create `.env.local`:
+
+```env
+# AI Planning (ADK-TS)
+GOOGLE_API_KEY=your_gemini_api_key
+ADK_MODEL=gemini-2.5-flash
+
+# DTK Contracts (run deploy script first, see step 3)
+NEXT_PUBLIC_DTK_DELEGATION_MANAGER=0x...
+NEXT_PUBLIC_DTK_IMPLEMENTATION=0x...
+
+# Optional: For deploying DTK contracts
+DEPLOYER_PRIVATE_KEY=0x...
+```
+
+### 3. Deploy DTK Delegation Framework to Monad
+
+**Important**: Monad testnet doesn't have DTK contracts deployed yet. You must deploy them once:
+
+```bash
+# Install tsx
+npm install -D tsx
+
+# Set DEPLOYER_PRIVATE_KEY in .env.local (funded with MON)
+# Then run:
+npx tsx scripts/deploy-dtk.ts
+```
+
+This will:
+- Deploy Delegation Framework contracts to Monad testnet
+- Output the `DelegationManager` and `Implementation` addresses
+- Add those addresses to your `.env.local` as shown above
+
+**After deployment**, copy the printed addresses and add them to `.env.local`:
+```env
+NEXT_PUBLIC_DTK_DELEGATION_MANAGER=0x<DelegationManager_address>
+NEXT_PUBLIC_DTK_IMPLEMENTATION=0x<Implementation_address>
+```
+
+### 4. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Connect Wallet**: Connect MetaMask on Monad Testnet
+2. **Configure DCA**:
+   - Token pair (e.g., MON → USDC)
+   - Budget and number of legs
+   - Interval (minutes between executions)
+3. **Generate AI Plan**: Click "Generate with AI" to create an optimized schedule
+4. **Create Delegation**:
+   - Router address: Your deployed DCA Router contract (`0x9dA65B3413b6031E05F1E1eB58F8312084890e56`)
+   - Delegate address: EOA that will execute on your behalf
+   - Spend cap and expiry
+5. **Execute**: (Manual execution UI/automation coming soon)
 
-## Learn More
+## Architecture
 
-To learn more about Next.js, take a look at the following resources:
+- **Frontend**: Next.js 15 (App Router), Wagmi, Viem
+- **AI Agent**: ADK-TS with Gemini for plan generation
+- **Smart Accounts**: MetaMask Delegation Toolkit (Hybrid implementation)
+- **Contracts**: DCA Router on Monad testnet + DTK Delegation Framework
+- **Execution**: Delegated transactions via DTK
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── agents/dca/          # ADK-TS agent (planner)
+├── app/                 # Next.js routes & UI
+├── components/          # React components
+├── hooks/               # React hooks (Smart Account, etc.)
+├── lib/                 # Viem/Wagmi config, delegation service
+scripts/
+└── deploy-dtk.ts        # DTK contract deployment script
+```
 
-## Deploy on Vercel
+## Troubleshooting
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### "Delegation environment not available on this chain"
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Run the DTK deployment script:
+```bash
+npx tsx scripts/deploy-dtk.ts
+```
+
+### "wallet_client_missing" or button disabled
+
+- Ensure MetaMask is connected to Monad Testnet
+- Refresh the page and reconnect
+
+### AI plan fails
+
+Check `.env.local` has `GOOGLE_API_KEY` set.
+
+## Resources
+
+- [MetaMask Delegation Toolkit Docs](https://docs.metamask.io/delegation-toolkit)
+- [Monad Docs](https://docs.monad.xyz)
+- [ADK-TS Docs](../docs/) (local)
+- [DCA Sitter PRD](../DCA_Sitter_PRD.md)

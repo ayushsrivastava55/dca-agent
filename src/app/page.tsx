@@ -18,7 +18,7 @@ export default function Home() {
   const [budget, setBudget] = useState("100");
   const [legs, setLegs] = useState(4);
   const [intervalMins, setIntervalMins] = useState(60);
-  const [router, setRouter] = useState("");
+  const [router, setRouter] = useState("0x9dA65B3413b6031E05F1E1eB58F8312084890e56");
   const [delegate, setDelegate] = useState("");
   const [spendCap, setSpendCap] = useState("100");
   const [expiry, setExpiry] = useState(() => {
