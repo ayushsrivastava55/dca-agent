@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import 'pixel-retroui/dist/index.css';
+@import 'pixel-retroui/dist/fonts.css';
 
 :root {
   --background: #1B1B1E;

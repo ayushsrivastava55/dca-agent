@@ -10,6 +10,8 @@ import AgentDashboard from "@/components/AgentDashboard";
 import { createDelegation, revokeDelegation } from "@/lib/delegation";
 import { useWalletClient } from "wagmi";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { Button, Card } from "pixel-retroui";
+import EnvioPanel from "@/components/EnvioPanel";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -231,12 +233,9 @@ export default function Home() {
         <header className="flex items-center justify-between">
           <div className="text-2xl sm:text-3xl font-semibold">DCA Sitter</div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowLegacyInterface(!showLegacyInterface)}
-              className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
+            <Button onClick={() => setShowLegacyInterface(!showLegacyInterface)} className="px-3 py-1 text-sm">
               {showLegacyInterface ? '🤖 AI Dashboard' : '⚙️ Legacy Interface'}
-            </button>
+            </Button>
             <NetworkStatus />
             <SmartAccountStatus />
             <ConnectButton />
@@ -248,7 +247,7 @@ export default function Home() {
         ) : (
         <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="lg:col-span-2 rounded-2xl bg-[var(--surface)] text-black p-6">
+          <Card className="lg:col-span-2 bg-[var(--surface)] text-black p-6">
             <div className="text-lg font-medium mb-4">DCA Configuration</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
@@ -272,19 +271,15 @@ export default function Home() {
                 <input type="number" min={1} className="rounded-lg px-3 py-2 bg-white border border-black/10" value={intervalMins} onChange={(e) => setIntervalMins(Number(e.target.value))} />
               </div>
               <div className="flex items-end">
-                <button
-                  className="rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
-                  onClick={generateAIPlan}
-                  disabled={aiBusy}
-                >
+                <Button onClick={generateAIPlan} disabled={aiBusy} className="px-5 py-2 text-sm">
                   {aiBusy ? "Generating…" : "Generate with AI"}
-                </button>
+                </Button>
               </div>
             </div>
             {aiErr && <div className="mt-3 text-sm text-red-600">{aiErr}</div>}
-          </section>
+          </Card>
 
-          <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
+          <Card className="bg-[var(--surface)] text-black p-6">
             <div className="text-lg font-medium mb-4">Delegation</div>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
@@ -304,8 +299,7 @@ export default function Home() {
                 <input type="datetime-local" className="rounded-lg px-3 py-2 bg-white border border-black/10" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
               </div>
               <div className="flex gap-3">
-                <button
-                  className="rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
+                <Button
                   onClick={async () => {
                     try {
                       setBusy(true);
@@ -342,22 +336,18 @@ export default function Home() {
                     }
                   }}
                   disabled={!isConnected || !router || !delegate || !walletClient || !smartAddress || busy}
+                  className="px-5 py-2 text-sm"
                 >
                   {busy ? "Creating…" : "Create Delegation"}
-                </button>
+                </Button>
 
                 {delegationCreated && !executionId && (
-                  <button
-                    className="rounded-full bg-[var(--color-success)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
-                    onClick={startExecution}
-                    disabled={busy || !delegationId}
-                  >
+                  <Button onClick={startExecution} disabled={busy || !delegationId} className="px-5 py-2 text-sm">
                     {busy ? "Starting…" : "Start Execution"}
-                  </button>
+                  </Button>
                 )}
 
-                <button
-                  className="rounded-full bg-[var(--color-error)] text-white px-5 py-2 text-sm font-medium disabled:opacity-50"
+                <Button
                   onClick={async () => {
                     if (!delegationId) return;
                     try {
@@ -387,25 +377,26 @@ export default function Home() {
                     }
                   }}
                   disabled={!delegationCreated || busy}
+                  className="px-5 py-2 text-sm"
                 >
                   {busy ? "Revoking…" : "Revoke"}
-                </button>
+                </Button>
               </div>
             </div>
-          </section>
+          </Card>
         </div>
 
         {/* AI Strategy Display */}
         {aiStrategy && (
-          <section className="rounded-2xl bg-blue-50 border border-blue-200 text-black p-4">
+          <Card className="bg-blue-50 border border-blue-200 text-black p-4">
             <div className="text-sm font-medium text-blue-800 mb-2">AI Strategy</div>
             <div className="text-sm text-blue-700">{aiStrategy}</div>
-          </section>
+          </Card>
         )}
 
         {/* Status Dashboard */}
         {(delegationCreated || executionId || agentStatus) && (
-          <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
+          <Card className="bg-[var(--surface)] text-black p-6">
             <div className="text-lg font-medium mb-4">Status Dashboard</div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -468,10 +459,10 @@ export default function Home() {
                 </div>
               </div>
             )}
-          </section>
+          </Card>
         )}
 
-        <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
+        <Card className="bg-[var(--surface)] text-black p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="text-lg font-medium">Execution Timeline</div>
             <div className="flex items-center gap-2">
@@ -551,18 +542,15 @@ export default function Home() {
                   }))
             )}
           </div>
-        </section>
+        </Card>
 
         {/* Activity Log */}
-        <section className="rounded-2xl bg-[var(--surface)] text-black p-6">
+        <Card className="bg-[var(--surface)] text-black p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="text-lg font-medium">Activity Log</div>
-            <button
-              onClick={() => setLogs([])}
-              className="text-xs px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-            >
+            <Button onClick={() => setLogs([])} className="text-xs px-3 py-1">
               Clear
-            </button>
+            </Button>
           </div>
           <div className="bg-gray-900 rounded-lg p-4 h-48 overflow-y-auto">
             {logs.length === 0 ? (
@@ -577,16 +565,18 @@ export default function Home() {
               </div>
             )}
           </div>
-        </section>
+        </Card>
 
-        <section className="rounded-2xl border border-white/10 p-6">
+        <EnvioPanel />
+
+        <Card className="border border-white/10 p-6">
           <div className="text-sm mb-2">Monad Testnet</div>
           <div className="flex gap-3 text-sm">
             <a className="underline" href="https://faucet.monad.xyz/" target="_blank" rel="noreferrer">Faucet</a>
             <a className="underline" href="https://testnet.monadexplorer.com" target="_blank" rel="noreferrer">Explorer</a>
             <a className="underline" href="https://docs.monad.xyz/" target="_blank" rel="noreferrer">Docs</a>
           </div>
-        </section>
+        </Card>
         </>
         )}
       </div>

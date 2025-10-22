@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
+import { Button, Card } from "pixel-retroui";
 
 interface AgentMetrics {
   qualityScore: number;
@@ -52,11 +53,18 @@ interface OrchestrationResult {
 
 interface AlertItem {
   id: string;
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  metric: string;
-  currentValue: number;
-  threshold: number;
+  threshold: {
+    metricPath: string;
+    operator: 'gt' | 'lt' | 'eq' | 'gte' | 'lte';
+    value: number;
+    severity: 'info' | 'warning' | 'error' | 'critical';
+  };
   triggeredAt: number;
+  currentValue: number;
+  previousValue?: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  sessionId?: string;
+  acknowledged: boolean;
 }
 
 export default function AgentDashboard() {
@@ -266,7 +274,7 @@ export default function AgentDashboard() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <Card className="p-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             🤖 Multi-Agent DCA Orchestrator
           </h1>
@@ -285,11 +293,11 @@ export default function AgentDashboard() {
               {isConnected ? '🔗 Wallet Connected' : '🔴 Wallet Not Connected'}
             </div>
           </div>
-        </div>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Configuration Panel */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">🎯 DCA Configuration</h2>
 
             <div className="space-y-4">
@@ -348,13 +356,9 @@ export default function AgentDashboard() {
                 </select>
               </div>
 
-              <button
-                onClick={startOrchestration}
-                disabled={loading || !isConnected}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button onClick={startOrchestration} disabled={loading || !isConnected} className="w-full py-2 px-4">
                 {loading ? '⏳ Processing...' : '🚀 Start AI Orchestration'}
-              </button>
+              </Button>
 
               {error && (
                 <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -362,10 +366,10 @@ export default function AgentDashboard() {
                 </div>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* System Status */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">📊 System Status</h2>
 
             {/* Alerts */}
@@ -375,12 +379,12 @@ export default function AgentDashboard() {
                 <div className="space-y-2">
                   {alerts.map(alert => (
                     <div key={alert.id} className={`p-2 rounded text-sm ${
-                      alert.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                      alert.severity === 'error' ? 'bg-orange-100 text-orange-800' :
-                      alert.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                      alert.threshold.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                      alert.threshold.severity === 'error' ? 'bg-orange-100 text-orange-800' :
+                      alert.threshold.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-blue-100 text-blue-800'
                     }`}>
-                      {alert.metric}: {alert.currentValue} (threshold: {alert.threshold})
+                      {alert.threshold.metricPath}: {alert.currentValue} (threshold: {alert.threshold.operator} {alert.threshold.value})
                     </div>
                   ))}
                 </div>
@@ -412,28 +416,20 @@ export default function AgentDashboard() {
             <div className="mt-6 space-y-2">
               <h3 className="font-medium">🧪 System Tests</h3>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => runTests('quick_check')}
-                  disabled={loading}
-                  className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 disabled:opacity-50"
-                >
+                <Button onClick={() => runTests('quick_check')} disabled={loading} className="px-3 py-1 text-sm">
                   Quick Check
-                </button>
-                <button
-                  onClick={() => runTests('integration')}
-                  disabled={loading}
-                  className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded hover:bg-blue-200 disabled:opacity-50"
-                >
+                </Button>
+                <Button onClick={() => runTests('integration')} disabled={loading} className="px-3 py-1 text-sm">
                   Integration
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Results Panel */}
         {orchestrationResult && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">📈 Orchestration Results</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -524,11 +520,11 @@ export default function AgentDashboard() {
                 ))}
               </div>
             </div>
-          </div>
+          </Card>
         )}
 
         {/* Logs Panel */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">📝 System Logs</h2>
           <div className="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded h-64 overflow-y-auto">
             {logs.map((log, i) => (
@@ -538,7 +534,7 @@ export default function AgentDashboard() {
               <div className="text-gray-500">No logs yet. Start an orchestration to see activity.</div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
