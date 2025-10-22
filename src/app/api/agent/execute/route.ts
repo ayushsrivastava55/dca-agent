@@ -12,14 +12,15 @@ export async function POST(req: Request) {
       router,
       plan,
       tokenIn,
-      tokenOut
+      tokenOut,
+      permissionContext
     } = body ?? {};
 
     // Validate required fields
-    if (!delegationId || !delegator || !delegate || !router || !Array.isArray(plan) || !tokenIn || !tokenOut) {
+    if (!delegationId || !delegator || !delegate || !router || !Array.isArray(plan) || !tokenIn || !tokenOut || !permissionContext) {
       return new Response(JSON.stringify({
         error: "missing_required_fields",
-        required: ["delegationId", "delegator", "delegate", "router", "plan", "tokenIn", "tokenOut"]
+        required: ["delegationId", "delegator", "delegate", "router", "plan", "tokenIn", "tokenOut", "permissionContext"]
       }), { status: 400 });
     }
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
       })),
       tokenIn,
       tokenOut,
-      permissionContext: [], // TODO: Add proper delegation context
+      permissionContext: permissionContext || [],
     };
 
     // Schedule execution
