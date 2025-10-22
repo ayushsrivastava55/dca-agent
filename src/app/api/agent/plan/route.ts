@@ -26,29 +26,51 @@ export async function POST(req: Request) {
     try {
       const agent = await createDcaAgent();
       const prompt = [
-        "Return strictly JSON with shape {\"plan\": [{\"index\": number, \"amount\": number, \"atISO\": string}]}",
-        "Don't include markdown or prose.",
-        `tokenIn=${tokenIn} tokenOut=${tokenOut} budget=${budget} legs=${legs} intervalMins=${intervalMins}`,
+        "Create a DCA execution plan with the following parameters:",
+        `- Token Pair: ${tokenIn} → ${tokenOut}`,
+        `- Total Budget: ${budget} ${tokenIn}`,
+        `- Number of Legs: ${legs}`,
+        `- Base Interval: ${intervalMins} minutes`,
+        "",
+        "Analyze market conditions and create an optimized execution schedule.",
+        "Return a JSON response with your plan, strategy explanation, and total verification.",
+        "",
+        "Current market assumption: moderate volatility (adjust timing accordingly).",
       ].join("\n");
-      const { runner } = agent as any;
+
+      const { runner } = agent as { runner: { ask: (prompt: string) => Promise<unknown> } };
       const out = await runner.ask(prompt);
+
       if (typeof out === "string") {
         try {
           const parsed = JSON.parse(out);
-          if (parsed?.plan && Array.isArray(parsed.plan)) return Response.json({ plan: parsed.plan });
-        } catch {}
-        // fallthrough to fallback plan
-      } else if (out && typeof out === "object" && Array.isArray((out as any).plan)) {
-        return Response.json({ plan: (out as any).plan });
+          if (parsed?.plan && Array.isArray(parsed.plan)) {
+            return Response.json({
+              plan: parsed.plan,
+              strategy: parsed.strategy,
+              totalAmount: parsed.totalAmount,
+              aiGenerated: true
+            });
+          }
+        } catch (parseError) {
+          console.warn("Failed to parse AI response:", parseError);
+        }
+      } else if (out && typeof out === "object" && Array.isArray((out as { plan?: unknown[] }).plan)) {
+        return Response.json({
+          plan: (out as { plan: unknown[] }).plan,
+          strategy: (out as { strategy?: string }).strategy,
+          totalAmount: (out as { totalAmount?: number }).totalAmount,
+          aiGenerated: true
+        });
       }
-    } catch (_e) {
-      // ignore, fallback below
+    } catch (agentError) {
+      console.warn("ADK agent failed:", agentError);
     }
 
     // Fallback to deterministic even-spread plan
     const plan = buildFallbackPlan(params);
     return Response.json({ plan, fallback: true });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message ?? "bad_request" }), { status: 400 });
+  } catch (err: unknown) {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "bad_request" }), { status: 400 });
   }
 }

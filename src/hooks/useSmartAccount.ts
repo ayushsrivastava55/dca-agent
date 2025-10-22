@@ -7,7 +7,7 @@ import { Implementation, toMetaMaskSmartAccount } from "@metamask/delegation-too
 
 export function useSmartAccount() {
   const { data: walletClient } = useWalletClient();
-  const [smartAccount, setSmartAccount] = useState<any | null>(null);
+  const [smartAccount, setSmartAccount] = useState<unknown | null>(null);
   const [smartAddress, setSmartAddress] = useState<`0x${string}` | null>(null);
   const [owner, setOwner] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,11 +32,11 @@ export function useSmartAccount() {
           setSmartAccount(sa);
           setOwner(ownerAddr);
           // Address property presence depends on toolkit version; guard access.
-          const addr = (sa as any)?.address as `0x${string}` | undefined;
+          const addr = (sa as { address?: `0x${string}` })?.address;
           if (addr) setSmartAddress(addr);
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? String(e));
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
       }

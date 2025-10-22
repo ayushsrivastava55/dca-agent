@@ -1,183 +1,187 @@
 import { monadTestnet } from "@/lib/chains";
-import { parseUnits } from "viem";
+import { createWalletClient, custom, concat, encodePacked, parseUnits, toFunctionSelector } from "viem";
+import { createTimestampTerms } from "@metamask/delegation-core";
+import type { Delegation } from "@metamask/delegation-toolkit";
 
-// Cache for deployed DTK environment
-let _monadEnvironment: any = null;
-let _environmentInitialized = false;
- 
+interface EthereumProvider {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
+  removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+}
 
 export type DelegationParams = {
-  router: `0x${string}` | string;
-  spendCap: string; // human units
-  expiry: string; // ISO string (not yet enforced here)
-  walletClient: any; // viem wallet client
-  from: `0x${string}`; // smart account (delegator)
-  to: `0x${string}`; // delegate address (agent)
+  router?: `0x${string}` | string;
+  spendCap: string;
+  expiry: string;
+  walletClient: unknown;
+  from: `0x${string}`;
+  to: `0x${string}`;
 };
 
 export type DelegationReceipt = {
   id: string;
   signature?: string;
-  raw?: any;
+  raw?: unknown;
+  permissionContext?: Delegation[];
 };
 
-async function getEnvironment(dtk: any, chainId: number) {
-  // For Monad testnet, ALWAYS prioritize env vars over any DTK built-in
-  if (chainId === monadTestnet.id) {
-    if (_monadEnvironment) {
-      return _monadEnvironment;
-    }
-
-    if (!_environmentInitialized) {
-      _environmentInitialized = true;
-      const delegationManager = process.env.NEXT_PUBLIC_DTK_DELEGATION_MANAGER;
-      const implementation = process.env.NEXT_PUBLIC_DTK_IMPLEMENTATION;
-
-      if (delegationManager && implementation) {
-        console.log('[DTK] Using pre-deployed contracts from env');
-        
-        // Build environment with caveat enforcers (match DTK's expected structure)
-        _monadEnvironment = {
-          DelegationManager: delegationManager,
-          implementations: {
-            Hybrid: implementation,
-            HybridDeleGatorImpl: implementation,
-          },
-          caveatEnforcers: {
-            NativeTokenTransferAmountEnforcer: process.env.NEXT_PUBLIC_DTK_NATIVE_TOKEN_ENFORCER || '',
-            ExactCalldataEnforcer: process.env.NEXT_PUBLIC_DTK_EXACT_CALLDATA_ENFORCER || '',
-            AllowedTargetsEnforcer: process.env.NEXT_PUBLIC_DTK_ALLOWED_TARGETS_ENFORCER || '',
-            TimestampEnforcer: process.env.NEXT_PUBLIC_DTK_TIMESTAMP_ENFORCER || '',
-          },
-        };
-        // Register it with DTK
-        try {
-          const { overrideDeployedEnvironment } = await import('@metamask/delegation-toolkit/utils');
-          overrideDeployedEnvironment(chainId, '1.3.0', _monadEnvironment);
-        } catch {}
-        return _monadEnvironment;
-      } else {
-        console.warn('[DTK] No Delegation Framework found for Monad testnet.');
-        console.warn('[DTK] Run: npx tsx scripts/deploy-dtk.ts to deploy contracts.');
-        console.warn('[DTK] Or add NEXT_PUBLIC_DTK_DELEGATION_MANAGER and NEXT_PUBLIC_DTK_IMPLEMENTATION to .env.local');
-      }
-    }
-  }
-
-  // For other chains, use DTK's built-in environments
-  return dtk.getDelegatorEnvironment?.(chainId) || dtk.getDeleGatorEnvironment?.(chainId) || null;
-}
-
 export async function createDelegation(params: DelegationParams): Promise<DelegationReceipt> {
-  const { walletClient, from, to, spendCap } = params;
-  const chainId = monadTestnet.id;
-  const dtk = await import("@metamask/delegation-toolkit");
+  const { walletClient, from, to } = params;
 
   if (!walletClient) throw new Error("wallet_client_missing");
   if (!from || !from.startsWith("0x")) throw new Error("from_address_invalid");
   if (!to || !to.startsWith("0x")) throw new Error("to_address_invalid");
-  if (!params.router || typeof params.router !== "string" || !params.router.startsWith("0x")) {
-    throw new Error("router_address_invalid");
+
+  // Use provided router or default to DCA Router from environment
+  const router = params.router || process.env.NEXT_PUBLIC_DCA_ROUTER_ADDRESS;
+  if (!router || typeof router !== "string" || !router.startsWith("0x")) {
+    throw new Error("router_address_invalid_or_missing");
   }
+  console.log('[DTK] Using DCA Router:', router);
 
-  const environment = await getEnvironment(dtk as any, chainId);
-  console.log('[DTK] Environment loaded:', environment);
-  if (!environment) throw new Error("Delegation environment not available on this chain");
+  // Import DTK with static imports to avoid build hanging
+  const { signDelegation } = await import("@metamask/delegation-toolkit/actions");
+  const { ROOT_AUTHORITY } = await import("@metamask/delegation-toolkit");
 
-  const delegationManager =
-    (environment as any).DelegationManager ||
-    (environment as any).delegationManager ||
-    (environment as any).delegationManagerAddress;
-  console.log('[DTK] Extracted DelegationManager:', delegationManager);
-  if (!delegationManager || typeof delegationManager !== "string" || !delegationManager.startsWith("0x")) {
-    console.error('[DTK] DelegationManager validation failed:', { delegationManager, type: typeof delegationManager });
+  // Build environment from env vars
+  const delegationManager = process.env.NEXT_PUBLIC_DTK_DELEGATION_MANAGER;
+
+  if (!delegationManager) {
     throw new Error("delegation_manager_missing");
   }
 
-  // Create delegation with spend cap scope
-  console.log('[DTK] Creating delegation with nativeTokenTransferAmount scope');
-  const maxAmount = parseUnits(spendCap || "100", 18); // Default 100 MON if not specified
-  
-  const d = (dtk as any).createDelegation({
-    from,
-    to,
-    environment,
-    scope: {
-      type: "nativeTokenTransferAmount",
-      maxAmount,
-    },
-    caveats: [],
-  });
+  console.log('[DTK] Environment loaded with DelegationManager:', delegationManager);
 
-  let signerAddr = walletClient?.account?.address as `0x${string}` | undefined;
-  if (!signerAddr && typeof walletClient?.getAddresses === "function") {
-    const addrs = await walletClient.getAddresses();
+  // Get signer address
+  let signerAddr = (walletClient as { account?: { address?: string } })?.account?.address as `0x${string}` | undefined;
+  if (!signerAddr && typeof (walletClient as { getAddresses?: () => Promise<string[]> })?.getAddresses === "function") {
+    const addrs = await (walletClient as { getAddresses: () => Promise<string[]> }).getAddresses();
     signerAddr = addrs?.[0] as `0x${string}` | undefined;
   }
-  if (!signerAddr || !signerAddr.startsWith("0x")) throw new Error("signer_account_missing");
-
-  // Inject expected account shape onto the walletClient so DTK can read signer.account.address
-  try {
-    (walletClient as any).account = { address: signerAddr, type: "json-rpc" } as any;
-  } catch {}
-
-  // Debug logging
-  console.log('[DTK] WalletClient details:', {
-    hasAccount: !!walletClient?.account,
-    accountAddress: walletClient?.account?.address,
-    accountType: walletClient?.account?.type,
-    signerAddr,
-    chainId: walletClient?.chain?.id,
-  });
-
-  console.log('[DTK] Delegation object:', {
-    delegate: d?.delegate,
-    delegator: d?.delegator,
-    authority: d?.authority,
-    hasCaveats: !!d?.caveats,
-    hasScope: !!d?.scope,
-  });
-
-  console.log('[DTK] Attempting signDelegation with:', {
-    delegation: d,
-    chainId,
-    chainIdType: typeof chainId,
-    delegationManager,
-    delegationManagerType: typeof delegationManager,
-    signerAddr,
-    hasWalletClient: !!walletClient,
-    walletClientType: typeof walletClient,
-  });
-
-  // Validate all required fields
-  if (!d) throw new Error('delegation_object_missing');
-  if (!chainId || typeof chainId !== 'number') throw new Error('chainId_invalid');
-  if (!delegationManager || typeof delegationManager !== 'string' || !delegationManager.startsWith('0x')) {
-    throw new Error('delegationManager_invalid');
+  if (!signerAddr || !signerAddr.startsWith("0x")) {
+    throw new Error("signer_account_missing");
   }
 
-  let signature: string | undefined;
+  // Create wallet client for signing
+  if (typeof window === 'undefined' || !(window as { ethereum?: EthereumProvider }).ethereum) {
+    throw new Error('no_ethereum_provider');
+  }
+
+  const viemWalletClient = createWalletClient({
+    account: signerAddr as `0x${string}`,
+    chain: monadTestnet,
+    transport: custom((window as { ethereum: EthereumProvider }).ethereum),
+  });
+
+  console.log('[DTK] Created wallet client for signing');
+
+  // Create delegation object manually with proper structure
+  const allowedTargetsEnforcer = process.env.NEXT_PUBLIC_DTK_ALLOWED_TARGETS_ENFORCER;
+  if (!allowedTargetsEnforcer) {
+    throw new Error("allowed_targets_enforcer_missing");
+  }
+  const nativeAmountEnforcer = process.env.NEXT_PUBLIC_DTK_NATIVE_TOKEN_ENFORCER;
+  if (!nativeAmountEnforcer) {
+    throw new Error("native_amount_enforcer_missing");
+  }
+  const timestampEnforcer = process.env.NEXT_PUBLIC_DTK_TIMESTAMP_ENFORCER;
+  if (!timestampEnforcer) {
+    throw new Error("timestamp_enforcer_missing");
+  }
+
+  // Encode the allowed targets (router address) as terms: concat of addresses per DTK builder
+  const encodedTargets = concat([router as `0x${string}`]);
+
+  // Encode spend cap as uint256 per NativeTokenTransferAmountEnforcer
+  const maxAmount = parseUnits(params.spendCap || "0", 18);
+  const encodedMaxAmount = encodePacked(['uint256'], [maxAmount]);
+
+  // Encode expiry as timestamp caveat (beforeThreshold)
+  const beforeThresholdSec = Math.floor(new Date(params.expiry).getTime() / 1000);
+  const timestampTerms = createTimestampTerms({
+    timestampAfterThreshold: 0,
+    timestampBeforeThreshold: beforeThresholdSec,
+  });
+
+  const delegation = {
+    delegate: to,
+    delegator: from,
+    authority: ROOT_AUTHORITY as `0x${string}`,
+    caveats: [
+      {
+        enforcer: allowedTargetsEnforcer as `0x${string}`,
+        terms: encodedTargets,
+        args: '0x' as `0x${string}`, // No additional args needed
+      },
+      {
+        enforcer: nativeAmountEnforcer as `0x${string}`,
+        terms: encodedMaxAmount,
+        args: '0x' as `0x${string}`,
+      },
+      {
+        enforcer: timestampEnforcer as `0x${string}`,
+        terms: timestampTerms as `0x${string}`,
+        args: '0x' as `0x${string}`,
+      },
+    ],
+    salt: `0x${Date.now().toString(16).padStart(64, '0')}` as `0x${string}`, // Unique salt
+  };
+
+  // Optional: function-level restriction if AllowedMethodsEnforcer is available
+  const allowedMethodsEnforcer = process.env.NEXT_PUBLIC_DTK_ALLOWED_METHODS_ENFORCER as `0x${string}` | undefined;
+  if (allowedMethodsEnforcer) {
+    try {
+      const selector = toFunctionSelector('executeLeg(uint256,address)') as `0x${string}`;
+      const caveatsArr = delegation.caveats as { enforcer: `0x${string}`; terms: `0x${string}`; args: `0x${string}` }[];
+      caveatsArr.splice(1, 0, {
+        enforcer: allowedMethodsEnforcer,
+        terms: concat([selector]),
+        args: '0x' as `0x${string}`,
+      });
+    } catch (e) {
+      console.warn('[DTK] Failed to add AllowedMethods caveat:', e);
+    }
+  } else {
+    console.warn('[DTK] AllowedMethodsEnforcer not configured; skipping function-level restriction');
+  }
+
+  console.log('[DTK] Delegation object created:', {
+    delegate: delegation.delegate,
+    delegator: delegation.delegator,
+    authority: delegation.authority,
+    caveatsCount: delegation.caveats.length,
+    salt: delegation.salt,
+  });
+
+  // Sign the delegation
   try {
-    // Try standard pattern: signer is walletClient with account property
-    signature = await (dtk as any).signDelegation({
-      signer: walletClient,
-      delegation: d,
-      chainId,
-      delegationManager,
+    console.log('[DTK] Calling signDelegation...');
+
+    const signature = await signDelegation(viemWalletClient, {
+      delegation,
+      delegationManager: delegationManager as `0x${string}`,
+      chainId: monadTestnet.id,
       name: "DelegationManager",
       version: "1",
     });
-    console.log('[DTK] Signature obtained:', signature?.slice(0, 20) + '...');
-  } catch (e: any) {
-    console.error('[DTK] signDelegation failed:', e);
-    const msg = e?.message || String(e);
-    throw new Error(`sign_delegation_failed: ${msg}`);
-  }
 
-  return { id: `dlg_${Date.now()}`, signature, raw: d };
+    console.log('[DTK] Signature obtained:', signature.slice(0, 20) + '...');
+
+    const signedDelegation = { ...delegation, signature } as const;
+
+    return {
+      id: `dlg_${Date.now()}`,
+      signature,
+      raw: signedDelegation,
+      permissionContext: [signedDelegation]
+    };
+  } catch (signError: unknown) {
+    console.error('[DTK] Signing failed:', signError);
+    const errorMessage = signError instanceof Error ? signError.message : String(signError);
+    throw new Error(`sign_delegation_failed: ${errorMessage}`);
+  }
 }
 
-export async function revokeDelegation(_id: string): Promise<void> {
-  // TODO: integrate disableDelegation with DTK when persisting delegation metadata
+export async function revokeDelegation(): Promise<void> {
   await new Promise((r) => setTimeout(r, 200));
 }

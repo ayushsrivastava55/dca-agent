@@ -3,7 +3,7 @@
 import { useSmartAccount } from "@/hooks/useSmartAccount";
 
 export default function SmartAccountStatus() {
-  const { ready, ownerAddress, smartAccount, loading, error } = useSmartAccount();
+  const { ready, ownerAddress, loading, error } = useSmartAccount();
 
   if (loading) return <div className="text-xs">Setting up smart account…</div>;
   if (error) return <div className="text-xs text-[var(--color-error)]">{error}</div>;

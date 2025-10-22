@@ -45,7 +45,7 @@ async function main() {
 
   console.log("\n✅ DTK contracts deployed:");
   console.log("DelegationManager:", environment.DelegationManager);
-  console.log("Implementation:", environment.Implementation);
+  console.log("Implementation:", environment.implementations);
 
   // Register the environment
   overrideDeployedEnvironment(monadTestnet.id, "1.3.0", environment);
@@ -53,7 +53,7 @@ async function main() {
   console.log("\n✅ Environment registered. You can now use delegations on Monad testnet.");
   console.log("\nAdd these to your .env.local:");
   console.log(`DTK_DELEGATION_MANAGER=${environment.DelegationManager}`);
-  console.log(`DTK_IMPLEMENTATION=${environment.Implementation}`);
+  console.log(`DTK_IMPLEMENTATION=${environment.implementations}`);
 }
 
 main().catch((error) => {
