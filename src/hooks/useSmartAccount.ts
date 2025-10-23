@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useWalletClient } from "wagmi";
 import { publicClient } from "@/lib/viem";
 import { Implementation, toMetaMaskSmartAccount } from "@metamask/delegation-toolkit";
+import type { ToMetaMaskSmartAccountReturnType } from "@metamask/delegation-toolkit";
+
+type HybridSmartAccount = ToMetaMaskSmartAccountReturnType<Implementation.Hybrid>;
 
 export function useSmartAccount() {
   const { data: walletClient } = useWalletClient();
-  const [smartAccount, setSmartAccount] = useState<unknown | null>(null);
+  const [smartAccount, setSmartAccount] = useState<HybridSmartAccount | null>(null);
   const [smartAddress, setSmartAddress] = useState<`0x${string}` | null>(null);
   const [owner, setOwner] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);

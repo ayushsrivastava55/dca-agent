@@ -13,7 +13,12 @@ const nextConfig: NextConfig = {
       "@react-native-async-storage/async-storage",
       "@opentelemetry/winston-transport",
       "@opentelemetry/exporter-jaeger",
-      "@iqai/adk"
+      "@envio-dev/hypersync-client",
+      "@envio-dev/hypersync-client-darwin-arm64",
+      "@envio-dev/hypersync-client-darwin-x64",
+      "@envio-dev/hypersync-client-linux-arm64",
+      "@envio-dev/hypersync-client-linux-x64",
+      "@envio-dev/hypersync-client-win32-x64"
     );
 
     // Basic Node.js polyfills for browser
@@ -37,8 +42,8 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  // Transpile specific packages
-  transpilePackages: ['@metamask/sdk'],
+  // Transpile specific packages (ensure ADK ESM works on server)
+  transpilePackages: ['@metamask/sdk', '@iqai/adk'],
 };
 
 export default nextConfig;

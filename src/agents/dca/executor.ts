@@ -37,7 +37,11 @@ export class DcaExecutor {
   private walletClient;
   private agentAccount;
 
-  constructor(agentPrivateKey: string) {
+  constructor(agentPrivateKey?: string) {
+    if (!agentPrivateKey) {
+      throw new Error('DcaExecutor requires AGENT_PRIVATE_KEY for server-side automated execution. For client-side execution, use the execution utilities in @/lib/execution instead.');
+    }
+    
     // Create agent account from private key
     this.agentAccount = privateKeyToAccount(agentPrivateKey as `0x${string}`);
 
@@ -205,13 +209,29 @@ export class DcaExecutor {
 // Singleton instance
 let executorInstance: DcaExecutor | null = null;
 
+/**
+ * Get DCA executor for server-side automated execution
+ * WARNING: This requires AGENT_PRIVATE_KEY environment variable
+ * For most use cases, users should execute delegations client-side using @/lib/execution
+ */
 export function getDcaExecutor(): DcaExecutor {
   if (!executorInstance) {
     const agentPrivateKey = process.env.AGENT_PRIVATE_KEY;
     if (!agentPrivateKey) {
-      throw new Error('AGENT_PRIVATE_KEY not configured');
+      throw new Error(
+        'AGENT_PRIVATE_KEY not configured. ' +
+        'This is only needed for server-side automated execution. ' +
+        'For client-side execution (recommended), use executeDelegatedTransaction from @/lib/execution instead.'
+      );
     }
     executorInstance = new DcaExecutor(agentPrivateKey);
   }
   return executorInstance;
+}
+
+/**
+ * Check if server-side executor is available
+ */
+export function isExecutorAvailable(): boolean {
+  return !!process.env.AGENT_PRIVATE_KEY;
 }

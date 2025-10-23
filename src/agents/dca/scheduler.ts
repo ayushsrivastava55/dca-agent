@@ -17,9 +17,11 @@ export class ExecutionScheduler {
   private executor: DcaExecutor;
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning = false;
+  private pollIntervalMs: number;
 
-  constructor(executor: DcaExecutor) {
+  constructor(executor: DcaExecutor, pollIntervalMs = Number(process.env.DCA_LOOP_INTERVAL_MS || 30000)) {
     this.executor = executor;
+    this.pollIntervalMs = Number.isFinite(pollIntervalMs) && pollIntervalMs > 0 ? pollIntervalMs : 30000;
   }
 
   /**
@@ -47,8 +49,8 @@ export class ExecutionScheduler {
 
     this.scheduledExecutions.set(execution.id, execution);
 
-    // Start scheduler if not running
-    if (!this.isRunning) {
+    const loopAgentEnabled = process.env.ENABLE_DCA_LOOP_AGENT === 'true';
+    if (!loopAgentEnabled && !this.isRunning) {
       this.start();
     }
 
@@ -77,12 +79,17 @@ export class ExecutionScheduler {
     console.log('[Scheduler] Starting execution scheduler');
     this.isRunning = true;
 
-    // Check for ready executions every 30 seconds
     this.intervalId = setInterval(() => {
-      this.processExecutions().catch(error => {
-        console.error('[Scheduler] Error processing executions:', error);
-      });
-    }, 30000);
+      this.processExecutions()
+        .then(({ executedLegs, activeExecutions }) => {
+          if (executedLegs > 0) {
+            console.log(`[Scheduler] Tick executed ${executedLegs} leg(s) across ${activeExecutions} plan(s)`);
+          }
+        })
+        .catch(error => {
+          console.error('[Scheduler] Error processing executions:', error);
+        });
+    }, this.pollIntervalMs);
   }
 
   /**
@@ -99,61 +106,65 @@ export class ExecutionScheduler {
   }
 
   /**
+   * Manual tick for external loop agents
+   */
+  async tick(): Promise<{ executedLegs: number; activeExecutions: number }> {
+    return this.processExecutions();
+  }
+
+  /**
    * Process all scheduled executions
    */
-  private async processExecutions(): Promise<void> {
-    const activeExecutions = Array.from(this.scheduledExecutions.values())
-      .filter(exec => exec.status === 'active');
+  private async processExecutions(): Promise<{ executedLegs: number; activeExecutions: number }> {
+    const activeExecutions = Array.from(this.scheduledExecutions.values()).filter(exec => exec.status === 'active');
 
     if (activeExecutions.length === 0) {
-      console.log('[Scheduler] No active executions to process');
-      return;
+      if (this.isRunning && this.intervalId) {
+        this.stop();
+      }
+      return { executedLegs: 0, activeExecutions: 0 };
     }
 
     console.log(`[Scheduler] Processing ${activeExecutions.length} active executions`);
+    let executedLegs = 0;
 
     for (const execution of activeExecutions) {
       try {
-        await this.processExecution(execution);
+        executedLegs += await this.processExecution(execution);
       } catch (error) {
         console.error(`[Scheduler] Error processing execution ${execution.id}:`, error);
-        // Mark execution as failed
         execution.status = 'failed';
         execution.error = error instanceof Error ? error.message : 'Unknown error';
       }
     }
+
+    return { executedLegs, activeExecutions: activeExecutions.length };
   }
 
   /**
    * Process a single execution
    */
-  private async processExecution(execution: ScheduledExecution): Promise<void> {
+  private async processExecution(execution: ScheduledExecution): Promise<number> {
     const { request } = execution;
 
-    // Find next ready leg
     const readyLeg = this.executor.getNextReadyLeg(request.plan);
     if (!readyLeg) {
-      // Check if all legs are completed
       const completedLegs = request.plan.filter(leg => leg.status === 'completed').length;
       if (completedLegs === request.plan.length) {
         execution.status = 'completed';
         execution.completedLegs = completedLegs;
         console.log(`[Scheduler] Execution ${execution.id} completed`);
       }
-      return;
+      return 0;
     }
 
     console.log(`[Scheduler] Executing leg ${readyLeg.index} for ${execution.id}`);
-
-    // Mark leg as executing
     readyLeg.status = 'executing';
 
     try {
-      // Execute the leg
       const result = await this.executor.executeLeg(request, readyLeg.index);
 
       if (result.success) {
-        // Mark leg as completed
         readyLeg.status = 'completed';
         readyLeg.txHash = result.txHash;
 
@@ -162,20 +173,18 @@ export class ExecutionScheduler {
         execution.nextLegAt = this.getNextExecutionTime(request.plan);
 
         console.log(`[Scheduler] Leg ${readyLeg.index} completed for ${execution.id}`);
+        return 1;
       } else {
-        // Mark leg as failed
         readyLeg.status = 'failed';
         readyLeg.error = result.error;
 
-        // For now, pause the entire execution on any failure
-        // In production, you might want more sophisticated retry logic
         execution.status = 'failed';
         execution.error = `Leg ${readyLeg.index} failed: ${result.error}`;
 
         console.error(`[Scheduler] Leg ${readyLeg.index} failed for ${execution.id}: ${result.error}`);
+        return 0;
       }
     } catch (error) {
-      // Mark leg as failed
       readyLeg.status = 'failed';
       readyLeg.error = error instanceof Error ? error.message : 'Unknown error';
 
@@ -183,6 +192,7 @@ export class ExecutionScheduler {
       execution.error = `Execution error: ${readyLeg.error}`;
 
       console.error(`[Scheduler] Execution error for ${execution.id}:`, error);
+      return 0;
     }
   }
 

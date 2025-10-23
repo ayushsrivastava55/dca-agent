@@ -28,43 +28,34 @@ npm install
 Create `.env.local`:
 
 ```env
-# AI Planning (ADK-TS)
+# DTK Contract Addresses (Already deployed on Monad testnet)
+NEXT_PUBLIC_DTK_DELEGATION_MANAGER=0x1e4B42f77EB0A994e4fdF706Caa3E3746273832C
+NEXT_PUBLIC_DTK_IMPLEMENTATION=0x6e4C528d46dA0F636E3b3E43004B9870fc6dFECa
+NEXT_PUBLIC_DTK_NATIVE_TOKEN_ENFORCER=0x3b6B9A768E29deeAA9DE9651088B55886Fc0e2f0
+NEXT_PUBLIC_DTK_ALLOWED_TARGETS_ENFORCER=0xB230e7D4D41dBd6D01049F0E59943f21D4f176e1
+NEXT_PUBLIC_DTK_TIMESTAMP_ENFORCER=0x2A00AB50544ddda3780061cC7823d7e0447Ba1AB
+
+# DCA Router (Already deployed on Monad testnet)
+NEXT_PUBLIC_DCA_ROUTER_ADDRESS=0x9dA65B3413b6031E05F1E1eB58F8312084890e56
+
+# AI Planning (Optional - for AI-optimized DCA schedules)
+# Choose ONE provider (OpenAI or Google Gemini)
+
+# Option 1: OpenAI (recommended for production)
+OPENAI_API_KEY=your_openai_api_key
+ADK_MODEL=gpt-4o-mini
+
+# Option 2: Google Gemini (default if OpenAI not set)
 GOOGLE_API_KEY=your_gemini_api_key
 ADK_MODEL=gemini-2.5-flash
 
-# DTK Contracts (run deploy script first, see step 3)
-NEXT_PUBLIC_DTK_DELEGATION_MANAGER=0x...
-NEXT_PUBLIC_DTK_IMPLEMENTATION=0x...
-
-# Optional: For deploying DTK contracts
-DEPLOYER_PRIVATE_KEY=0x...
+# Server-Side Automated Execution (OPTIONAL - not recommended)
+# Only set this if you want server-side automated execution
+# For most users, client-side execution is more secure
+# AGENT_PRIVATE_KEY=0x...
 ```
 
-### 3. Deploy DTK Delegation Framework to Monad
-
-**Important**: Monad testnet doesn't have DTK contracts deployed yet. You must deploy them once:
-
-```bash
-# Install tsx
-npm install -D tsx
-
-# Set DEPLOYER_PRIVATE_KEY in .env.local (funded with MON)
-# Then run:
-npx tsx scripts/deploy-dtk.ts
-```
-
-This will:
-- Deploy Delegation Framework contracts to Monad testnet
-- Output the `DelegationManager` and `Implementation` addresses
-- Add those addresses to your `.env.local` as shown above
-
-**After deployment**, copy the printed addresses and add them to `.env.local`:
-```env
-NEXT_PUBLIC_DTK_DELEGATION_MANAGER=0x<DelegationManager_address>
-NEXT_PUBLIC_DTK_IMPLEMENTATION=0x<Implementation_address>
-```
-
-### 4. Run the app
+### 3. Run the app
 
 ```bash
 npm run dev
@@ -79,20 +70,25 @@ Open [http://localhost:3000](http://localhost:3000)
    - Token pair (e.g., MON → USDC)
    - Budget and number of legs
    - Interval (minutes between executions)
-3. **Generate AI Plan**: Click "Generate with AI" to create an optimized schedule
+3. **Generate AI Plan** (Optional): Click "Generate with AI" to create an optimized schedule
 4. **Create Delegation**:
-   - Router address: Your deployed DCA Router contract (`0x9dA65B3413b6031E05F1E1eB58F8312084890e56`)
-   - Delegate address: EOA that will execute on your behalf
-   - Spend cap and expiry
-5. **Execute**: (Manual execution UI/automation coming soon)
+   - Delegate address will auto-fill with your own address (recommended for security)
+   - Set spend cap and expiry
+   - Click "One-Click Start" to create delegation
+5. **Execute Legs**:
+   - Click "Execute Next Leg" to manually execute each leg when ready
+   - Your wallet will prompt you to sign each transaction
+   - No private key or server-side agent needed!
 
 ## Architecture
 
 - **Frontend**: Next.js 15 (App Router), Wagmi, Viem
-- **AI Agent**: ADK-TS with Gemini for plan generation
+- **AI Agent**: ADK-TS with Gemini for plan generation (optional)
 - **Smart Accounts**: MetaMask Delegation Toolkit (Hybrid implementation)
 - **Contracts**: DCA Router on Monad testnet + DTK Delegation Framework
-- **Execution**: Delegated transactions via DTK
+- **Execution**:
+  - **Client-Side** (Recommended): User executes delegations from their own wallet
+  - **Server-Side** (Optional): Automated execution via agent (requires AGENT_PRIVATE_KEY)
 
 ## Project Structure
 
@@ -109,11 +105,16 @@ scripts/
 
 ## Troubleshooting
 
-### "Delegation environment not available on this chain"
+### "delegation_manager_missing" error
 
-Run the DTK deployment script:
-```bash
-npx tsx scripts/deploy-dtk.ts
+Ensure all DTK contract addresses are set in `.env.local`:
+
+```env
+NEXT_PUBLIC_DTK_DELEGATION_MANAGER=0x1e4B42f77EB0A994e4fdF706Caa3E3746273832C
+NEXT_PUBLIC_DTK_ALLOWED_TARGETS_ENFORCER=0xB230e7D4D41dBd6D01049F0E59943f21D4f176e1
+NEXT_PUBLIC_DTK_NATIVE_TOKEN_ENFORCER=0x3b6B9A768E29deeAA9DE9651088B55886Fc0e2f0
+NEXT_PUBLIC_DTK_TIMESTAMP_ENFORCER=0x2A00AB50544ddda3780061cC7823d7e0447Ba1AB
+NEXT_PUBLIC_DCA_ROUTER_ADDRESS=0x9dA65B3413b6031E05F1E1eB58F8312084890e56
 ```
 
 ### "wallet_client_missing" or button disabled
@@ -123,7 +124,11 @@ npx tsx scripts/deploy-dtk.ts
 
 ### AI plan fails
 
-Check `.env.local` has `GOOGLE_API_KEY` set.
+Check `.env.local` has either `OPENAI_API_KEY` or `GOOGLE_API_KEY` set. If using OpenAI, set `ADK_MODEL=gpt-4o-mini` (or another OpenAI model).
+
+### About AGENT_PRIVATE_KEY
+
+You do **NOT** need `AGENT_PRIVATE_KEY` for normal usage. The app now supports client-side execution where you execute delegations from your own wallet. Only set this if you specifically need server-side automated execution.
 
 ## Resources
 

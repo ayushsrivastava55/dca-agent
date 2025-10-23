@@ -238,7 +238,7 @@ export class RiskAnalysisTool {
   }
 
   validateDcaPlan(
-    plan: Array<{ index: number; amount: number; atISO: string }>,
+    plan: Array<{ index: number; amount: number; atISO: string }> | undefined,
     totalBudget: number,
     riskAssessment: RiskAssessment,
     userRiskLevel: 'conservative' | 'moderate' | 'aggressive'
@@ -251,8 +251,12 @@ export class RiskAnalysisTool {
     const adjustments: string[] = [];
     const profile = this.getRiskProfile(userRiskLevel);
 
+    if (!plan || !Array.isArray(plan) || plan.length === 0) {
+      return { isValid: false, issues: ['Plan empty or invalid'], adjustments };
+    }
+
     // Check total amount
-    const totalAmount = plan.reduce((sum, leg) => sum + leg.amount, 0);
+    const totalAmount = plan.reduce((sum, leg) => sum + (Number(leg.amount) || 0), 0);
     if (Math.abs(totalAmount - totalBudget) > 0.01) {
       issues.push(`Total plan amount ($${totalAmount}) doesn't match budget ($${totalBudget})`);
     }

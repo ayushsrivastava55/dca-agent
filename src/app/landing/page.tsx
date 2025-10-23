@@ -54,7 +54,23 @@ export default function Landing() {
             </div>
             <span className="text-3xl font-black text-black">DCA SITTER</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a
+              href="https://docs.metamask.io/delegation-toolkit"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-block border-4 border-black bg-white px-4 py-2 text-xs font-black !text-black hover:!text-black focus:!text-black visited:!text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+            >
+              DOCS
+            </a>
+            <a
+              href="https://github.com/ayushsrivastava06/metamask-cookoff"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-block border-4 border-black bg-white px-4 py-2 text-xs font-black !text-black hover:!text-black focus:!text-black visited:!text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+            >
+              GITHUB
+            </a>
             <button
               onClick={() => router.push("/dashboard")}
               className="border-4 border-black bg-white px-6 py-2 font-black text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
@@ -105,16 +121,30 @@ export default function Landing() {
                   <div className="border-4 border-black bg-[#FFE66D] p-4">
                     <div className="mb-2 text-sm font-black">STATUS</div>
                     <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 animate-pulse rounded-full bg-green-500"></div>
+                      <div className="h-3 w-3 animate-ping rounded-full bg-green-500"></div>
                       <span className="font-black">EXECUTING</span>
                     </div>
                   </div>
                   <div className="border-4 border-black bg-[#95E1D3] p-4">
                     <div className="mb-2 text-sm font-black">PROGRESS</div>
                     <div className="h-8 border-4 border-black bg-white">
-                      <div className="h-full bg-[#FF6B6B]" style={{ width: "60%" }}></div>
+                      <div className="h-full bg-[#FF6B6B] transition-[width] duration-500" style={{ width: "68%" }}></div>
                     </div>
                   </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => router.push("/dashboard")}
+                    className="border-4 border-black bg-[#0A84FF] px-4 py-3 text-sm font-black text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none"
+                  >
+                    OPEN DASHBOARD
+                  </button>
+                  <button
+                    onClick={() => router.push("/dashboard")}
+                    className="border-4 border-black bg-white px-4 py-3 text-sm font-black text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none"
+                  >
+                    CREATE DELEGATION
+                  </button>
                 </div>
               </div>
               {/* Decorative elements */}
@@ -135,10 +165,10 @@ export default function Landing() {
             {stats.map((stat, index) => (
               <div
                 key={index}
-                className={`${stat.color} border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none`}
+                className={`${stat.color} border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none rounded-sm`}
               >
                 <div className="text-center">
-                  <div className="mb-2 text-4xl font-black">{stat.value}</div>
+                  <div className="mb-2 text-4xl font-black tracking-tight">{stat.value}</div>
                   <div className="text-sm font-bold uppercase">{stat.label}</div>
                 </div>
               </div>
@@ -169,7 +199,7 @@ export default function Landing() {
                     : ""
                 }`}
               >
-                <div className="mb-4 text-6xl">{feature.emoji}</div>
+                <div className="mb-4 text-6xl drop-shadow-[2px_2px_0_rgba(0,0,0,1)]">{feature.emoji}</div>
                 <h3 className="mb-3 text-2xl font-black">{feature.title}</h3>
                 <p className="font-bold leading-relaxed text-black/80">{feature.description}</p>
               </div>
@@ -197,6 +227,30 @@ export default function Landing() {
                   <h3 className="mb-3 text-2xl font-black">{item.title}</h3>
                   <p className="font-bold text-black/80">{item.desc}</p>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="border-b-8 border-black bg-white py-20">
+        <div className="mx-auto max-w-4xl px-6">
+          <h2 className="mb-10 text-center text-5xl font-black">FAQ</h2>
+          <div className="space-y-4">
+            {[{
+              q: "Is this non-custodial?",
+              a: "Yes. You delegate limited permissions via MetaMask DTK; funds stay in your account."
+            }, {
+              q: "What network does it use?",
+              a: "Monad testnet. You can switch networks and fund via the Monad faucet."
+            }, {
+              q: "Can I revoke the agent?",
+              a: "Anytime. Use the dashboard to revoke or pause delegation instantly."
+            }].map((item, i) => (
+              <div key={i} className="border-4 border-black bg-[#FFFEF2] p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                <div className="text-lg font-black">Q{i + 1}. {item.q}</div>
+                <div className="mt-2 font-bold text-black/80">{item.a}</div>
               </div>
             ))}
           </div>

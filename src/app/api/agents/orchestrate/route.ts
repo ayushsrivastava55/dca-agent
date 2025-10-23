@@ -2,8 +2,10 @@ import { multiAgentOrchestrator } from '@/agents/orchestrator/multi-agent-orches
 import { eventStreamManager } from '@/agents/streaming/event-stream';
 import { callbackSystem } from '@/agents/callbacks/callback-system';
 import { metricsCollector } from '@/agents/evaluation/metrics';
+import { resolveToken } from '@/lib/tokenlist';
 
 export async function POST(req: Request) {
+  const started = Date.now();
   try {
     const body = await req.json();
     const {
@@ -26,23 +28,23 @@ export async function POST(req: Request) {
       }), { status: 400 });
     }
 
-    // Validate addresses
-    if (!tokenIn.startsWith('0x') || !tokenOut.startsWith('0x')) {
-      return new Response(JSON.stringify({
-        error: 'invalid_token_addresses',
-        message: 'Token addresses must be valid hex strings starting with 0x',
-      }), { status: 400 });
-    }
+    // Accept symbols or addresses; resolve symbols to addresses when possible
+    const inIsAddress = typeof tokenIn === 'string' && tokenIn.startsWith('0x');
+    const outIsAddress = typeof tokenOut === 'string' && tokenOut.startsWith('0x');
+    const inResolved = inIsAddress ? null : await resolveToken(tokenIn);
+    const outResolved = outIsAddress ? null : await resolveToken(tokenOut);
+    const tokenInFinal = inIsAddress ? tokenIn : (inResolved?.address ?? tokenIn);
+    const tokenOutFinal = outIsAddress ? tokenOut : (outResolved?.address ?? tokenOut);
 
-    console.log(`[API] Starting optimized DCA orchestration for ${tokenOut} with $${budget} budget`);
+    console.log(`[API] Starting optimized DCA orchestration for ${tokenOutFinal} with $${budget} budget`);
 
     // Start metrics tracking
-    const startTime = Date.now();
+    const startTime = started;
 
     // Execute multi-agent orchestration
     const result = await multiAgentOrchestrator.orchestrateOptimizedDca({
-      tokenIn,
-      tokenOut,
+      tokenIn: tokenInFinal,
+      tokenOut: tokenOutFinal,
       budget,
       userRiskLevel: userRiskLevel as 'conservative' | 'moderate' | 'aggressive',
       sessionId,
@@ -147,6 +149,10 @@ export async function POST(req: Request) {
         streamSubscriptionId,
         callbackId,
       },
+      tokens: {
+        input: { requested: tokenIn, resolved: tokenInFinal },
+        output: { requested: tokenOut, resolved: tokenOutFinal },
+      }
     };
 
     console.log(`[API] Orchestration completed successfully (${executionTime}ms, quality: ${(result.qualityScore * 100).toFixed(1)}%)`);
@@ -162,7 +168,7 @@ export async function POST(req: Request) {
       agentType: 'multi_agent_orchestrator',
       timestamp: Date.now(),
       performance: {
-        executionTime: Date.now(),
+        executionTime: Date.now() - started,
         errorRate: 1,
         successRate: 0,
         throughput: 0,
@@ -175,7 +181,7 @@ export async function POST(req: Request) {
         consistency: 0,
       },
       userExperience: {
-        responseTime: Date.now(),
+        responseTime: Date.now() - started,
         usabilityScore: 0.1,
         errorHandling: 0.3,
       },

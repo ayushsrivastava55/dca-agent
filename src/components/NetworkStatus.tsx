@@ -13,7 +13,7 @@ export default function NetworkStatus() {
   if (!isConnected) return null;
   if (isOnMonad) {
     return (
-      <div className="text-xs rounded-full border border-white/20 px-3 py-1">Monad Testnet</div>
+      <div className="text-xs rounded-full border border-black/20 px-3 py-1 text-black bg-green-50">Monad Testnet</div>
     );
   }
 

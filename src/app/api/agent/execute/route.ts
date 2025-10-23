@@ -1,9 +1,19 @@
 import { getExecutionScheduler } from "@/agents/dca/scheduler";
-import { getDcaExecutor } from "@/agents/dca/executor";
+import { getDcaExecutor, isExecutorAvailable } from "@/agents/dca/executor";
 import type { ExecutionRequest } from "@/agents/dca/executor";
+import { ensureDcaLoopAgent } from "@/agents/dca/loopAgent";
 
 export async function POST(req: Request) {
   try {
+    // Check if server-side execution is available
+    if (!isExecutorAvailable()) {
+      return new Response(JSON.stringify({
+        error: "server_side_execution_not_available",
+        message: "Server-side automated execution is not configured. Users should execute delegations client-side using their wallet.",
+        recommendation: "Use the executeDelegatedTransaction function from @/lib/execution to execute delegations client-side."
+      }), { status: 501 });
+    }
+
     const body = await req.json();
     const {
       delegationId,
@@ -58,6 +68,7 @@ export async function POST(req: Request) {
 
     // Schedule execution
     const scheduler = getExecutionScheduler();
+    ensureDcaLoopAgent();
     const executionId = await scheduler.schedule(executionRequest);
 
     console.log(`[API] Scheduled DCA execution ${executionId} for delegation ${delegationId}`);

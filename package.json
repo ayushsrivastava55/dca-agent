@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@envio-dev/hypersync-client": "^0.6.6",
     "@iqai/adk": "^0.5.0",
     "@metamask/delegation-toolkit": "^0.13.0",
     "@metamask/sdk": "^0.33.1",

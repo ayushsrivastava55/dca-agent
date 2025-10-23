@@ -111,6 +111,7 @@ export class MetricsCollector {
   private alerts = new Map<string, MetricAlert>();
 
   private readonly maxMetricsHistory = 1000;
+  private readonly maxAlertsHistory = 100; // Limit alerts to prevent memory leak
   private readonly collectionInterval = 60000; // 1 minute
   private collectionTimer?: NodeJS.Timeout;
 
@@ -409,6 +410,15 @@ export class MetricsCollector {
 
     this.alerts.set(alertId, alert);
 
+    // Clean up old alerts to prevent memory leak
+    if (this.alerts.size > this.maxAlertsHistory) {
+      const oldestAlerts = Array.from(this.alerts.entries())
+        .sort((a, b) => a[1].triggeredAt - b[1].triggeredAt)
+        .slice(0, this.alerts.size - this.maxAlertsHistory);
+      
+      oldestAlerts.forEach(([id]) => this.alerts.delete(id));
+    }
+
     // Emit alert event
     eventSystem.emit({
       type: 'agent_warning',
@@ -461,8 +471,8 @@ export class MetricsCollector {
     this.addThreshold({
       metricPath: 'resources.memoryUtilization',
       operator: 'gt',
-      value: 0.9, // 90%
-      severity: 'critical',
+      value: 0.95, // 95% - More realistic threshold for Node.js
+      severity: 'warning', // Changed from critical to warning
     });
   }
 

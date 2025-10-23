@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { Button, Card } from "pixel-retroui";
+import TokenSelector from "@/components/TokenSelector";
 
 interface AgentMetrics {
   qualityScore: number;
@@ -69,8 +70,10 @@ interface AlertItem {
 
 export default function AgentDashboard() {
   const { address, isConnected } = useAccount();
-  const [tokenIn, setTokenIn] = useState("0xUSDC");
-  const [tokenOut, setTokenOut] = useState("0xETH");
+  const [tokenIn, setTokenIn] = useState("MON");
+  const [tokenOut, setTokenOut] = useState("USDC");
+  const [tokenInAddr, setTokenInAddr] = useState<string | null>(null);
+  const [tokenOutAddr, setTokenOutAddr] = useState<string | null>(null);
   const [budget, setBudget] = useState("1000");
   const [userRiskLevel, setUserRiskLevel] = useState<'conservative' | 'moderate' | 'aggressive'>('moderate');
   const [orchestrationResult, setOrchestrationResult] = useState<OrchestrationResult | null>(null);
@@ -303,28 +306,29 @@ export default function AgentDashboard() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Token In (Address)
+                  Token In
                 </label>
-                <input
-                  type="text"
-                  value={tokenIn}
-                  onChange={(e) => setTokenIn(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="0x..."
+                <TokenSelector
+                  selectedSymbol={tokenIn}
+                  onSelect={(t) => { setTokenIn(t.symbol); setTokenInAddr(t.address === 'native' ? null : t.address); }}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Token Out (Address)
+                  Token Out
                 </label>
-                <input
-                  type="text"
-                  value={tokenOut}
-                  onChange={(e) => setTokenOut(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="0x..."
+                <TokenSelector
+                  selectedSymbol={tokenOut}
+                  onSelect={(t) => { setTokenOut(t.symbol); setTokenOutAddr(t.address === 'native' ? null : t.address); }}
                 />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button onClick={() => { const a = tokenIn; const b = tokenOut; const aAddr = tokenInAddr; const bAddr = tokenOutAddr; setTokenIn(b); setTokenOut(a); setTokenInAddr(bAddr); setTokenOutAddr(aAddr); }} className="px-3 py-1 text-sm">⇄ Swap</Button>
+                <div className="text-xs text-gray-600">Quick pairs:</div>
+                <Button onClick={() => { setTokenIn('MON'); setTokenInAddr(null); setTokenOut('USDC'); }} className="px-3 py-1 text-xs">MON ↔ USDC</Button>
+                <Button onClick={() => { setTokenIn('WMON'); setTokenInAddr('0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701'); setTokenOut('USDC'); }} className="px-3 py-1 text-xs">WMON ↔ USDC</Button>
               </div>
 
               <div>
@@ -501,7 +505,7 @@ export default function AgentDashboard() {
                 </div>
                 <div>
                   <div className="text-gray-600">Agents Used</div>
-                  <div className="font-semibold">{orchestrationResult.result.qualityMetrics.agentExecutionOrder.length}</div>
+                  <div className="font-semibold">{orchestrationResult.metadata.agentExecutionOrder.length}</div>
                 </div>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { createDcaAgent, type DcaPlanParams } from "@/agents/dca/agent";
+export const runtime = 'nodejs';
 
 function buildFallbackPlan({ budget, legs, intervalMins }: DcaPlanParams) {
   const amt = budget / legs;
@@ -61,68 +62,34 @@ export async function POST(req: Request) {
 
     const params: DcaPlanParams = { tokenIn, tokenOut, budget, legs, intervalMins };
 
-    // Try ADK agent first
+    // Use ADK agent plan generation (no mock fallback)
     try {
       const agent = await createDcaAgent();
-      const prompt = [
-        "Create a DCA execution plan with the following parameters:",
-        `- Token Pair: ${tokenIn} → ${tokenOut}`,
-        `- Total Budget: ${budget} ${tokenIn}`,
-        `- Number of Legs: ${legs}`,
-        `- Base Interval: ${intervalMins} minutes`,
-        "",
-        "Analyze market conditions and create an optimized execution schedule.",
-        "Return a JSON response with your plan, strategy explanation, and total verification.",
-        "",
-        "Current market assumption: moderate volatility (adjust timing accordingly).",
-      ].join("\n");
-
-      const { runner } = agent as { runner: { ask: (prompt: string) => Promise<unknown> } };
-      const out = await runner.ask(prompt);
-
-      if (typeof out === "string") {
-        // Check if it's the stub runner message
-        if (out.includes("ADK not") || out.includes("stub runner")) {
-          console.warn("ADK agent not available, falling back to deterministic plan");
-        } else {
-          try {
-            const parsed = JSON.parse(out);
-            if (parsed?.plan && Array.isArray(parsed.plan)) {
-              return Response.json({
-                plan: parsed.plan,
-                strategy: parsed.strategy,
-                totalAmount: parsed.totalAmount,
-                aiGenerated: true
-              });
-            }
-          } catch (parseError) {
-            console.warn("Failed to parse AI response:", out.substring(0, 100), parseError);
-          }
-        }
-      } else if (out && typeof out === "object" && Array.isArray((out as { plan?: unknown[] }).plan)) {
-        return Response.json({
-          plan: (out as { plan: unknown[] }).plan,
-          strategy: (out as { strategy?: string }).strategy,
-          totalAmount: (out as { totalAmount?: number }).totalAmount,
-          aiGenerated: true
-        });
+      const result = await agent.createOptimizedPlan(params);
+      if (!result || !Array.isArray(result.plan) || result.plan.length === 0) {
+        throw new Error("invalid_ai_plan");
       }
+      return Response.json({
+        plan: result.plan,
+        strategy: result.strategy,
+        totalAmount: result.totalAmount,
+        aiGenerated: true,
+      });
     } catch (agentError) {
-      console.warn("ADK agent failed:", agentError);
+      console.error("ADK plan generation failed:", agentError);
+
+      const fallbackPlan = buildFallbackPlan(params);
+      const fallbackStrategy = generateFallbackStrategy(params);
+
+      return Response.json({
+        plan: fallbackPlan,
+        strategy: fallbackStrategy,
+        totalAmount: fallbackPlan.reduce((sum, leg) => sum + leg.amount, 0),
+        aiGenerated: false,
+        fallback: true,
+        error: agentError instanceof Error ? agentError.message : String(agentError),
+      });
     }
-
-    // Fallback to enhanced deterministic plan with smart features
-    const plan = buildFallbackPlan(params);
-    const fallbackStrategy = generateFallbackStrategy(params);
-
-    return Response.json({
-      plan,
-      strategy: fallbackStrategy,
-      totalAmount: budget,
-      fallback: true,
-      aiGenerated: false,
-      note: "Using optimized mathematical model (AI agent temporarily unavailable)"
-    });
   } catch (err: unknown) {
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "bad_request" }), { status: 400 });
   }
