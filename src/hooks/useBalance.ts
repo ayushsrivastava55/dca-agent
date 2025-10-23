@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createPublicClient, http, parseUnits, formatUnits } from "viem";
+import { createPublicClient, http, formatUnits } from "viem";
 import { monadTestnet } from "@/lib/chains";
 import type { TokenInfo } from "@/lib/tokenlist";
 
@@ -25,7 +25,7 @@ export function useBalance(account?: `0x${string}` | null, token?: TokenInfo | n
         } else if (token.address && token.address.startsWith("0x")) {
           bal = await client.readContract({ address: token.address as `0x${string}`, abi: erc20, functionName: "balanceOf", args: [account] }) as unknown as bigint;
         } else {
-          bal = 0n;
+          bal = BigInt(0);
         }
         if (cancelled) return;
         setValue(bal);
@@ -39,7 +39,7 @@ export function useBalance(account?: `0x${string}` | null, token?: TokenInfo | n
     }
     run();
     return () => { cancelled = true; };
-  }, [account, token?.address, token?.decimals, token?.isNative]);
+  }, [account, token]);
 
   return { loading, error, value, formatted };
 }

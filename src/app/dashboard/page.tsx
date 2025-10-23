@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Delegation } from "@metamask/delegation-toolkit";
 import { useAccount } from "wagmi";
 import ConnectButton from "@/components/ConnectButton";
@@ -53,8 +53,6 @@ export default function Home() {
   } | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
-
   const plan = useMemo(() => {
     const b = parseFloat(budget) || 0;
     const n = Number(legs) || 0;
@@ -139,87 +137,6 @@ export default function Home() {
     }
   }
 
-  async function startExecution() {
-    if (!delegationId || !smartAddress || !delegate || !router || !permissionContext) return;
-
-    try {
-      setBusy(true);
-      const planToUse = aiPlan || plan;
-      addLog("Starting DCA execution...", 'info');
-
-      const res = await fetch("/api/agent/execute", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          delegationId,
-          delegator: smartAddress,
-          delegate,
-          router,
-          plan: planToUse,
-          tokenIn,
-          tokenOut,
-          permissionContext,
-        }),
-      });
-
-      if (!res.ok) throw new Error(`execution_failed:${res.status}`);
-      const data = await res.json();
-
-      setExecutionId(data.executionId);
-      addLog(`Execution scheduled with ID: ${data.executionId}`, 'success');
-      addLog(`Agent address: ${data.agentAddress}`, 'info');
-      addLog(`Scheduled ${data.scheduledLegs} legs for execution`, 'info');
-
-      // Start polling for status updates
-      startStatusPolling(data.executionId);
-
-    } catch (e: unknown) {
-      const error = e instanceof Error ? e.message : "execution_error";
-      addLog(`Failed to start execution: ${error}`, 'error');
-      alert(`Failed to start execution: ${error}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function startStatusPolling(execId: string) {
-    // Clear any existing polling
-    if (statusPolling) {
-      clearInterval(statusPolling);
-    }
-
-    // Poll every 10 seconds
-    const interval = setInterval(async () => {
-      try {
-        const [execRes, agentRes] = await Promise.all([
-          fetch(`/api/agent/execute?executionId=${execId}`),
-          fetch('/api/agent/status')
-        ]);
-
-        if (execRes.ok) {
-          const execData = await execRes.json();
-          setExecutionStatus(execData.execution);
-        }
-
-        if (agentRes.ok) {
-          const agentData = await agentRes.json();
-          setAgentStatus(agentData);
-        }
-      } catch (error) {
-        console.warn("Status polling error:", error);
-      }
-    }, 10000);
-
-    setStatusPolling(interval);
-  }
-
-  const stopStatusPolling = useCallback(() => {
-    if (statusPolling) {
-      clearInterval(statusPolling);
-      setStatusPolling(null);
-    }
-  }, [statusPolling]);
-
   // Initialize with welcome message
   useEffect(() => {
     addLog("🎯 DCA Sitter initialized", 'info');
@@ -284,13 +201,6 @@ export default function Home() {
     const data = { tokenIn, tokenOut, budget, legs, intervalMins };
     try { localStorage.setItem("dca_ui", JSON.stringify(data)); } catch {}
   }, [tokenIn, tokenOut, budget, legs, intervalMins]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopStatusPolling();
-    };
-  }, [stopStatusPolling]);
 
   const [showLegacyInterface, setShowLegacyInterface] = useState(false);
   const [currentStep, setCurrentStep] = useState<'configure' | 'delegate' | 'execute' | 'complete'>('configure');
@@ -687,7 +597,7 @@ export default function Home() {
                 {delegationCreated && currentStep !== 'complete' && (
                   <Button 
                     onClick={executeNextLegClientSide} 
-                    disabled={busy || !permissionContext || currentStep === 'complete'} 
+                    disabled={busy || !permissionContext} 
                     className={`px-6 py-3 text-sm font-semibold ${
                       busy ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700 animate-pulse'
                     } text-white shadow-lg`}
@@ -738,7 +648,6 @@ export default function Home() {
                         addLog("🔴 Revoking delegation...", 'warning');
 
                         await revokeDelegation();
-                        stopStatusPolling();
 
                         setPermissionContext(null);
                         setDelegationCreated(false);

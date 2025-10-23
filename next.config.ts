@@ -5,21 +5,17 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   webpack: (config, { isServer }) => {
-    // Externalize problematic dependencies
-    config.externals.push(
-      "pino-pretty",
-      "lokijs",
-      "encoding",
-      "@react-native-async-storage/async-storage",
-      "@opentelemetry/winston-transport",
-      "@opentelemetry/exporter-jaeger",
-      "@envio-dev/hypersync-client",
-      "@envio-dev/hypersync-client-darwin-arm64",
-      "@envio-dev/hypersync-client-darwin-x64",
-      "@envio-dev/hypersync-client-linux-arm64",
-      "@envio-dev/hypersync-client-linux-x64",
-      "@envio-dev/hypersync-client-win32-x64"
-    );
+    // Externalize problematic dependencies (server-side only)
+    if (isServer) {
+      config.externals.push(
+        "pino-pretty",
+        "lokijs",
+        "encoding",
+        "@react-native-async-storage/async-storage",
+        "@opentelemetry/winston-transport",
+        "@opentelemetry/exporter-jaeger"
+      );
+    }
 
     // Basic Node.js polyfills for browser
     if (!isServer) {
@@ -30,15 +26,6 @@ const nextConfig: NextConfig = {
         tls: false,
       };
     }
-
-    // Ignore warnings for @iqai/adk dynamic requires
-    config.module.parser = {
-      ...config.module.parser,
-      javascript: {
-        ...config.module.parser?.javascript,
-        exprContextCritical: false,
-      },
-    };
 
     return config;
   },

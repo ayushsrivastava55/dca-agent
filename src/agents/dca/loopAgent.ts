@@ -4,11 +4,13 @@ import { emitAgentError } from "./events";
 import { isExecutorAvailable } from "./executor";
 
 const POLL_INTERVAL_MS = Number(process.env.DCA_LOOP_INTERVAL_MS || 30000);
+const IDLE_LOG_THRESHOLD = Number(process.env.DCA_LOOP_IDLE_LOGS || 10);
+let idleIterations = 0;
 
 class SchedulerTickAgent extends BaseAgent {
   constructor() {
     super({
-      name: "dca-scheduler-tick",
+      name: "dca_scheduler_tick",
       description: "Processes any DCA legs that are ready to execute",
     });
   }
@@ -19,6 +21,7 @@ class SchedulerTickAgent extends BaseAgent {
       const { executedLegs, activeExecutions } = await scheduler.tick();
 
       if (executedLegs > 0) {
+        idleIterations = 0;
         yield new Event({
           author: this.name,
           content: [
@@ -29,6 +32,20 @@ class SchedulerTickAgent extends BaseAgent {
           ],
           actions: new EventActions({ escalate: false }),
         });
+      } else {
+        idleIterations += 1;
+        if (IDLE_LOG_THRESHOLD > 0 && idleIterations % IDLE_LOG_THRESHOLD === 0) {
+          yield new Event({
+            author: this.name,
+            content: [
+              {
+                type: "text",
+                text: `No legs ready for execution after ${idleIterations} checks`,
+              },
+            ],
+            actions: new EventActions({ escalate: false }),
+          });
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -52,7 +69,7 @@ class SleepAgent extends BaseAgent {
 
   constructor(intervalMs: number) {
     super({
-      name: "dca-scheduler-sleep",
+      name: "dca_scheduler_sleep",
       description: "Backs off between scheduler ticks",
     });
     this.intervalMs = intervalMs;
@@ -68,12 +85,12 @@ class SleepAgent extends BaseAgent {
 }
 
 const loopAgent = new LoopAgent({
-  name: "dca-loop-agent",
+  name: "dca_loop_agent",
   description: "24/7 loop that processes scheduled DCA executions",
   subAgents: [new SchedulerTickAgent(), new SleepAgent(POLL_INTERVAL_MS)],
 });
 
-let loopRunner: InMemoryRunner | null = null;
+let loopRunner: InstanceType<typeof InMemoryRunner> | null = null;
 let loopStarted = false;
 
 export function ensureDcaLoopAgent(): void {
@@ -91,7 +108,7 @@ export function ensureDcaLoopAgent(): void {
     loopRunner = new InMemoryRunner(loopAgent);
     void loopRunner.run().catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      emitAgentError(message, { source: "dca-loop-agent" });
+      emitAgentError(message, { source: "dca_loop_agent" });
       console.error("[DCA Loop] Runner stopped unexpectedly:", error);
       loopStarted = false;
     });
@@ -99,7 +116,7 @@ export function ensureDcaLoopAgent(): void {
   } catch (error) {
     loopStarted = false;
     const message = error instanceof Error ? error.message : String(error);
-    emitAgentError(message, { source: "dca-loop-agent" });
+    emitAgentError(message, { source: "dca_loop_agent" });
     console.error("[DCA Loop] Failed to start loop agent:", error);
   }
 }

@@ -13,39 +13,39 @@ export default function Landing() {
       emoji: "🤖",
       title: "AI-Powered Planning",
       description: "Smart algorithms analyze market conditions and optimize your DCA execution schedule",
-      color: "bg-[#FF6B6B]",
+      color: "bg-[#DC2626]",
     },
     {
       emoji: "🔐",
       title: "Secure Delegation",
       description: "MetaMask Delegation Toolkit ensures your funds stay safe with granular permissions",
-      color: "bg-[#4ECDC4]",
+      color: "bg-[#0F766E]",
     },
     {
       emoji: "⚡",
       title: "Automated Execution",
       description: "Set it and forget it - our agents execute your DCA strategy 24/7",
-      color: "bg-[#FFE66D]",
+      color: "bg-[#2563EB]",
     },
     {
       emoji: "📊",
       title: "Real-time Tracking",
       description: "Monitor every transaction with live status updates and comprehensive logs",
-      color: "bg-[#95E1D3]",
+      color: "bg-[#F97316]",
     },
   ];
 
   const stats = [
-    { value: "$2.5M+", label: "Volume Processed", color: "bg-[#FF6B6B]" },
-    { value: "10K+", label: "DCA Executions", color: "bg-[#4ECDC4]" },
-    { value: "99.9%", label: "Uptime", color: "bg-[#FFE66D]" },
-    { value: "24/7", label: "Automated", color: "bg-[#95E1D3]" },
+    { value: "$2.5M+", label: "Volume Processed", color: "bg-[#B91C1C]" },
+    { value: "10K+", label: "DCA Executions", color: "bg-[#0E7490]" },
+    { value: "99.9%", label: "Uptime", color: "bg-[#1D4ED8]" },
+    { value: "24/7", label: "Automated", color: "bg-[#C2410C]" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#FFFEF2]">
+    <div className="min-h-screen bg-[#FFF0DC]">
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b-8 border-black bg-gradient-to-br from-[#FF6B6B] via-[#4ECDC4] to-[#FFE66D] pb-20 pt-10">
+      <section className="relative overflow-hidden border-b-8 border-black bg-gradient-to-br from-[#B91C1C] via-[#0F766E] to-[#F97316] pb-20 pt-10">
         {/* Nav */}
         <nav className="mx-auto mb-16 flex max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
             <div className="flex flex-col justify-center">
-              <div className="mb-6 inline-block w-fit border-4 border-black bg-[#FFE66D] px-4 py-2 font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <div className="mb-6 inline-block w-fit border-4 border-black bg-[#FACC15] px-4 py-2 font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 POWERED BY METAMASK DTK
               </div>
               <h1 className="mb-6 text-6xl font-black leading-none text-black md:text-7xl">
@@ -100,7 +100,7 @@ export default function Landing() {
               <div className="flex flex-wrap gap-4">
                 <button
                   onClick={() => router.push("/dashboard")}
-                  className="border-4 border-black bg-[#FF6B6B] px-8 py-4 text-xl font-black text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none"
+                  className="border-4 border-black bg-[#B91C1C] px-8 py-4 text-xl font-black text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none"
                 >
                   GET STARTED →
                 </button>
@@ -114,11 +114,11 @@ export default function Landing() {
             <div className="relative">
               <div className="relative z-10 border-8 border-black bg-white p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
                 <div className="space-y-4">
-                  <div className="border-4 border-black bg-[#4ECDC4] p-4">
+                  <div className="border-4 border-black bg-[#0D9488] p-4">
                     <div className="mb-2 text-sm font-black">DCA PLAN</div>
                     <div className="text-2xl font-black">4 LEGS × 25 MON</div>
                   </div>
-                  <div className="border-4 border-black bg-[#FFE66D] p-4">
+                  <div className="border-4 border-black bg-[#2563EB] p-4">
                     <div className="mb-2 text-sm font-black">STATUS</div>
                     <div className="flex items-center gap-2">
                       <div className="h-3 w-3 animate-ping rounded-full bg-green-500"></div>
@@ -128,7 +128,7 @@ export default function Landing() {
                   <div className="border-4 border-black bg-[#95E1D3] p-4">
                     <div className="mb-2 text-sm font-black">PROGRESS</div>
                     <div className="h-8 border-4 border-black bg-white">
-                      <div className="h-full bg-[#FF6B6B] transition-[width] duration-500" style={{ width: "68%" }}></div>
+                      <div className="h-full bg-[#B91C1C] transition-[width] duration-500" style={{ width: "68%" }}></div>
                     </div>
                   </div>
                 </div>
@@ -148,8 +148,8 @@ export default function Landing() {
                 </div>
               </div>
               {/* Decorative elements */}
-              <div className="absolute -right-4 -top-4 h-24 w-24 border-8 border-black bg-[#FF6B6B]"></div>
-              <div className="absolute -bottom-4 -left-4 h-16 w-16 border-8 border-black bg-[#FFE66D]"></div>
+              <div className="absolute -right-4 -top-4 h-24 w-24 border-8 border-black bg-[#DC2626]"></div>
+              <div className="absolute -bottom-4 -left-4 h-16 w-16 border-8 border-black bg-[#F59E0B]"></div>
             </div>
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function Landing() {
       </section>
 
       {/* Stats Section */}
-      <section className="border-b-8 border-black bg-[#FFFEF2] py-16">
+      <section className="border-b-8 border-black bg-[#FFE0BF] py-16">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             {stats.map((stat, index) => (
@@ -178,7 +178,7 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="border-b-8 border-black bg-white py-20">
+      <section className="border-b-8 border-black bg-[#FDF2E9] py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-5xl font-black">WHY DCA SITTER?</h2>

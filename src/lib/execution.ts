@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, custom, http, encodeFunctionData, parseUnits } from "viem";
+import { createPublicClient, createWalletClient, custom, http, encodeFunctionData } from "viem";
 import { monadTestnet } from "@/lib/chains";
 import { createExecution, ExecutionMode } from "@metamask/delegation-toolkit";
 import { DelegationManager } from "@metamask/delegation-toolkit/contracts";

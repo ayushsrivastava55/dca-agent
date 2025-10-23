@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { TokenInfo } from "@/lib/tokenlist";
-import { getTokenList, searchTokens } from "@/lib/tokenlist";
+import { getTokenList } from "@/lib/tokenlist";
 
 type Props = {
   selectedSymbol?: string;

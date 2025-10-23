@@ -1,4 +1,4 @@
-# DCA Sitter
+# KeeperDCA (previously DCA-Sitter)
 
 AI-powered Dollar-Cost Averaging (DCA) on Monad using MetaMask Delegation Toolkit and ADK-TS agents.
 
@@ -136,3 +136,21 @@ You do **NOT** need `AGENT_PRIVATE_KEY` for normal usage. The app now supports c
 - [Monad Docs](https://docs.monad.xyz)
 - [ADK-TS Docs](../docs/) (local)
 - [DCA Sitter PRD](../DCA_Sitter_PRD.md)
+
+## Automated Execution Loop
+
+To keep delegations running 24/7 without clicking "Execute Next Leg", enable the background loop agent:
+
+1. Add the following to your `.env.local` (and restart the app):
+   ```bash
+   ENABLE_DCA_LOOP_AGENT=true
+   DCA_LOOP_INTERVAL_MS=30000        # optional; interval in milliseconds between checks
+   DCA_LOOP_IDLE_LOGS=10             # optional; heartbeat logs after N idle polls
+   AGENT_PRIVATE_KEY=0x...          # the delegate key that matches the delegation's delegate address
+   ```
+
+2. Schedule a plan via the `/api/agent/execute` endpoint (the dashboard button does this automatically). When the first plan is scheduled the loop agent starts, and it wakes every `DCA_LOOP_INTERVAL_MS` to process ready legs.
+
+3. Logs tagged with `[DCA Loop]` confirm the runner is active. If the private key or delegate mismatch is incorrect you will see warnings in the server log.
+
+Leave `ENABLE_DCA_LOOP_AGENT` unset to fall back to manual/on-demand execution.

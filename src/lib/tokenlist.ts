@@ -1,6 +1,3 @@
-import { monadTestnet } from "@/lib/chains";
-import { createPublicClient, http } from "viem";
-
 export type TokenInfo = {
   address: string;
   symbol: string;

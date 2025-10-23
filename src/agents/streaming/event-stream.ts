@@ -24,6 +24,7 @@ export class EventStreamManager {
   private subscriptions = new Map<string, StreamSubscription>();
   private heartbeatInterval = 30000; // 30 seconds
   private heartbeatTimers = new Map<string, NodeJS.Timeout>();
+  private closedControllers = new Set<string>();
 
   constructor() {
     // Subscribe to all events for streaming
@@ -78,6 +79,7 @@ export class EventStreamManager {
     };
 
     this.subscriptions.set(subscriptionId, subscription);
+    this.closedControllers.delete(subscriptionId);
 
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
@@ -140,18 +142,25 @@ export class EventStreamManager {
 
     // Close stream controller
     const controller = this.streamControllers.get(subscriptionId);
-    if (controller) {
+    if (controller && !this.closedControllers.has(subscriptionId)) {
       try {
         controller.close();
       } catch (error) {
-        console.warn(`[EventStream] Error closing controller for ${subscriptionId}:`, error);
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes('Invalid state')) {
+          console.warn(`[EventStream] Error closing controller for ${subscriptionId}:`, error);
+        }
       }
+      this.closedControllers.add(subscriptionId);
+      this.streamControllers.delete(subscriptionId);
+    } else {
       this.streamControllers.delete(subscriptionId);
     }
 
     // Clean up
     this.streams.delete(subscriptionId);
     this.subscriptions.delete(subscriptionId);
+    this.closedControllers.delete(subscriptionId);
   }
 
   updateSubscription(
