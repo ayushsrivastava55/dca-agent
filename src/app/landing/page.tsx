@@ -159,7 +159,7 @@ export default function Landing() {
       </section>
 
       {/* Stats Section */}
-      <section className="border-b-8 border-black bg-[#FFE0BF] py-16">
+      <section className="border-b-8 border-black bg-[#9A3412] py-16 text-white">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             {stats.map((stat, index) => (
@@ -178,7 +178,7 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="border-b-8 border-black bg-[#FDF2E9] py-20">
+      <section className="border-b-8 border-black bg-[#1F2937] py-20 text-white">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-5xl font-black">WHY DCA SITTER?</h2>
@@ -209,7 +209,7 @@ export default function Landing() {
       </section>
 
       {/* How It Works */}
-      <section className="border-b-8 border-black bg-[#FFFEF2] py-20">
+      <section className="border-b-8 border-black bg-[#111827] py-20 text-white">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="mb-12 text-center text-5xl font-black">HOW IT WORKS</h2>
 
@@ -234,7 +234,7 @@ export default function Landing() {
       </section>
 
       {/* FAQ Section */}
-      <section className="border-b-8 border-black bg-white py-20">
+      <section className="border-b-8 border-black bg-[#0F172A] py-20 text-white">
         <div className="mx-auto max-w-4xl px-6">
           <h2 className="mb-10 text-center text-5xl font-black">FAQ</h2>
           <div className="space-y-4">
